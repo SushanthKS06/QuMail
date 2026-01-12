@@ -7,17 +7,17 @@ A production-grade Windows desktop email client with quantum-secure encryption, 
 ![React](https://img.shields.io/badge/React-18-61dafb)
 ![Electron](https://img.shields.io/badge/Electron-28-47848f)
 
-## ✨ Features
+## Features
 
-- 🔐 **Level 1: Quantum Secure OTP** - Information-theoretic security with One-Time Pad
-- 🛡️ **Level 2: Quantum-Aided AES** - AES-256-GCM with QKD-derived keys (default)
-- ⚛️ **Level 3: Post-Quantum Crypto** - Kyber + Dilithium for future-proof security
-- 📧 **Level 4: No Security** - Plain email for compatibility
-- 🔑 **Simulated QKD Key Manager** - ETSI GS QKD 014 compliant REST API
-- 📬 **Gmail Integration** - Full OAuth2 authentication
-- 🖥️ **Windows Desktop App** - Electron-based native experience
+-  **Level 1: Quantum Secure OTP** - Information-theoretic security with One-Time Pad
+-  **Level 2: Quantum-Aided AES** - AES-256-GCM with QKD-derived keys (default)
+-  **Level 3: Post-Quantum Crypto** - Kyber + Dilithium for future-proof security
+-  **Level 4: No Security** - Plain email for compatibility
+-  **Simulated QKD Key Manager** - ETSI GS QKD 014 compliant REST API
+-  **Gmail Integration** - Full OAuth2 authentication
+-  **Windows Desktop App** - Electron-based native experience
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -51,7 +51,7 @@ A production-grade Windows desktop email client with quantum-secure encryption, 
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -104,7 +104,7 @@ npm install
 npm run dev
 ```
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 QuMail/
@@ -219,16 +219,16 @@ QuMail/
     └── security-model.md
 ```
 
-## 🔒 Security Levels
+##  Security Levels
 
 | Level | Name | Algorithm | Quantum-Safe | Use Case |
 |-------|------|-----------|--------------|----------|
-| 1 | Quantum Secure OTP | XOR with QKD key | ✅ Perfect | Highest sensitivity |
-| 2 | Quantum-Aided AES | AES-256-GCM | ❌ | Standard secure email |
-| 3 | Post-Quantum Crypto | Kyber-768 + AES | ✅ | Long-term confidentiality |
+| 1 | Quantum Secure OTP | XOR with QKD key |  Perfect | Highest sensitivity |
+| 2 | Quantum-Aided AES | AES-256-GCM | Ⅹ | Standard secure email |
+| 3 | Post-Quantum Crypto | Kyber-768 + AES | ✓| Long-term confidentiality |
 | 4 | No Security | None | N/A | Compatibility |
 
-## ⚠️ Important Notes
+##  Important Notes
 
 ### Simulation Notice
 The Key Manager is a **simulation** using cryptographically secure random numbers (CSPRNG). In production, this would interface with real QKD hardware.
@@ -245,7 +245,7 @@ The Key Manager is a **simulation** using cryptographically secure random number
 - [API Reference](docs/api-reference.md) - Complete API documentation
 - [Security Model](docs/security-model.md) - Encryption details and threat model
 
-## 🛠️ Development
+##  Development
 
 ### Backend Development
 ```bash
@@ -267,11 +267,11 @@ cd backend
 pytest tests/
 ```
 
-## 📄 License
+##  License
 
 MIT License - See [LICENSE](LICENSE) for details.
 
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 - ETSI GS QKD 014 for Key Manager API specification
 - NIST for post-quantum algorithm standards (Kyber, Dilithium)
