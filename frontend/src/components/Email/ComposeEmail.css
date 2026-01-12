@@ -1,0 +1,138 @@
+.compose {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+.compose-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.compose-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.compose-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.compose-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+}
+
+.compose-button.discard {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+}
+
+.compose-button.discard:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+}
+
+.compose-button.send {
+    background: var(--color-accent-gradient);
+    border: none;
+    color: white;
+}
+
+.compose-button.send:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-glow);
+}
+
+.compose-button.send:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.compose-error {
+    padding: 0.75rem 1rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--color-error);
+    border-radius: var(--radius-sm);
+    color: var(--color-error);
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.compose-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.form-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.form-row label {
+    width: 70px;
+    flex-shrink: 0;
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+}
+
+.form-row input {
+    flex: 1;
+}
+
+.security-row {
+    padding: 0.75rem 0;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.body-row {
+    flex: 1;
+    align-items: stretch;
+}
+
+.body-row textarea {
+    flex: 1;
+    resize: none;
+    min-height: 300px;
+}
+
+.attachments-row {
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.attach-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    transition: all var(--transition-fast);
+}
+
+.attach-button:hover {
+    border-style: solid;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+}

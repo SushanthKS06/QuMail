@@ -1,0 +1,53 @@
+.security-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+}
+
+.security-badge-small {
+    font-size: 0.75rem;
+}
+
+.security-badge-medium {
+    font-size: 0.85rem;
+}
+
+.security-badge-large {
+    font-size: 0.95rem;
+    padding: 0.375rem 0.75rem;
+}
+
+.security-level-1 {
+    background: rgba(0, 255, 136, 0.15);
+    color: var(--color-security-1);
+    border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.security-level-2 {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--color-security-2);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.security-level-3 {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--color-security-3);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.security-level-4 {
+    background: rgba(106, 106, 122, 0.15);
+    color: var(--color-security-4);
+    border: 1px solid rgba(106, 106, 122, 0.3);
+}
+
+.badge-icon {
+    font-size: 1em;
+}
+
+.badge-label {
+    white-space: nowrap;
+}
