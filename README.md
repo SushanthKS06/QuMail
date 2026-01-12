@@ -239,7 +239,7 @@ The Key Manager is a **simulation** using cryptographically secure random number
 - All cryptography happens in the backend (never in frontend)
 - One-time keys are immediately consumed and zeroized
 
-## 📚 Documentation
+##  Documentation
 
 - [Architecture](docs/architecture.md) - System design and components
 - [API Reference](docs/api-reference.md) - Complete API documentation
