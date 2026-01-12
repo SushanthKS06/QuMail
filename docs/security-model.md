@@ -205,7 +205,7 @@ Content-Type: application/x-qumail-envelope
 
 ## Simulation Notice
 
-⚠️ **The Key Manager is a SIMULATION**
+ **The Key Manager is a SIMULATION**
 
 In this implementation:
 - Keys are generated using CSPRNG (os.urandom)
