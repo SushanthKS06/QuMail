@@ -1,13 +1,3 @@
-"""
-Email Service Package
-
-Handles all email protocol operations:
-- SMTP for sending
-- IMAP for receiving
-- OAuth2 for authentication
-- MIME building and parsing
-"""
-
 from .smtp_handler import send_email
 from .imap_handler import fetch_emails, get_email_by_id, delete_email, get_attachment_content
 from .oauth2 import refresh_oauth_token, get_valid_token

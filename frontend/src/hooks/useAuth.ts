@@ -17,8 +17,6 @@ export function useAuth() {
 
     const checkAuth = useCallback(async () => {
         try {
-            // In development, use a demo token
-            // In production, this would come from Electron IPC
             const demoToken = localStorage.getItem('qumail_token') || 'demo-token'
             setAuthToken(demoToken)
 
@@ -41,7 +39,6 @@ export function useAuth() {
 
     const login = useCallback(async () => {
         try {
-            // Call OAuth init endpoint to get auth URL
             const response = await fetch('/api/v1/auth/oauth/gmail/init', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -49,7 +46,6 @@ export function useAuth() {
 
             if (response.ok) {
                 const data = await response.json()
-                // Redirect to Google OAuth
                 window.location.href = data.auth_url
             } else {
                 console.error('OAuth init failed:', await response.text())

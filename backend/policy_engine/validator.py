@@ -1,9 +1,3 @@
-"""
-Request Validation
-
-Validates email send requests against security policies.
-"""
-
 import logging
 from typing import Any, Dict, List
 
@@ -22,28 +16,6 @@ async def validate_send_request(
     body_size: int,
     attachment_sizes: List[int] = None,
 ) -> Dict[str, Any]:
-    """
-    Validate an email send request.
-    
-    Checks:
-    - Security level is valid (1-4)
-    - Recipients support the requested level
-    - Sufficient key material is available
-    - Message size is within limits for OTP
-    
-    Args:
-        recipients: List of recipient email addresses
-        security_level: Requested security level (1-4)
-        body_size: Size of email body in bytes
-        attachment_sizes: Sizes of attachments in bytes
-    
-    Returns:
-        Dict with:
-        - valid: True if request is valid
-        - error: Error message if invalid
-        - adjusted_level: Adjusted level if fallback applied
-        - warnings: Any warnings
-    """
     attachment_sizes = attachment_sizes or []
     total_size = body_size + sum(attachment_sizes)
     
@@ -121,15 +93,6 @@ async def validate_send_request(
 
 
 async def check_recipient_capability(email: str) -> Dict[str, Any]:
-    """
-    Check a recipient's QuMail capabilities.
-    
-    Args:
-        email: Recipient email address
-    
-    Returns:
-        Dict with email, is_qumail_user, and supported_levels
-    """
     from storage.database import get_known_recipient
     
     recipient = await get_known_recipient(email)

@@ -1,16 +1,3 @@
-"""
-QuMail Crypto Engine Package
-
-Provides all cryptographic operations for the 4 security levels:
-- Level 1: One-Time Pad (OTP)
-- Level 2: Quantum-Aided AES-256-GCM
-- Level 3: Post-Quantum Cryptography (Kyber/Dilithium)
-- Level 4: No encryption (passthrough)
-
-ALL cryptographic operations MUST go through this module.
-Never perform crypto in the frontend.
-"""
-
 import base64
 import json
 import logging
@@ -31,21 +18,6 @@ async def encrypt_email(
     recipients: List[str],
     attachments: Optional[List[bytes]] = None,
 ) -> Dict[str, Any]:
-    """
-    Encrypt an email body and attachments using the specified security level.
-    
-    Args:
-        body: Plaintext email body
-        security_level: 1 (OTP), 2 (AES), 3 (PQC), 4 (none)
-        recipients: List of recipient email addresses
-        attachments: Optional list of attachment binary data
-    
-    Returns:
-        Dict containing:
-        - ciphertext: Encrypted body (base64 encoded)
-        - key_id: Key identifier for decryption
-        - metadata: Encryption metadata for the wire format
-    """
     if security_level == 4:
         return {
             "ciphertext": body,
@@ -73,15 +45,6 @@ async def encrypt_email(
 
 
 async def decrypt_email(email: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Decrypt an encrypted email.
-    
-    Args:
-        email: Email dict containing encrypted body and metadata
-    
-    Returns:
-        Dict with decrypted body and any other decrypted fields
-    """
     security_level = email.get("security_level", 4)
     
     if security_level == 4:
@@ -111,7 +74,6 @@ async def decrypt_attachment(
     key_id: Optional[str],
     security_level: int,
 ) -> bytes:
-    """Decrypt an attachment."""
     if security_level == 4:
         return content
     
@@ -134,7 +96,6 @@ async def decrypt_attachment(
 
 
 async def _encrypt_otp(body: str, recipients: List[str]) -> Dict[str, Any]:
-    """Level 1: One-Time Pad encryption."""
     from qkd_client import request_key
     
     body_bytes = body.encode('utf-8')
@@ -169,7 +130,6 @@ async def _encrypt_otp(body: str, recipients: List[str]) -> Dict[str, Any]:
 
 
 async def _encrypt_aes(body: str, recipients: List[str]) -> Dict[str, Any]:
-    """Level 2: Quantum-Aided AES-256-GCM encryption."""
     from qkd_client import request_key
     
     key_response = await request_key(
@@ -204,7 +164,6 @@ async def _encrypt_aes(body: str, recipients: List[str]) -> Dict[str, Any]:
 
 
 async def _encrypt_pqc(body: str, recipients: List[str]) -> Dict[str, Any]:
-    """Level 3: Post-Quantum Cryptography (Kyber + optional Dilithium)."""
     from qkd_client import request_key
     from storage.database import get_known_recipient
     
@@ -257,7 +216,6 @@ async def _decrypt_otp(
     key_id: Optional[str],
     metadata: Dict[str, Any],
 ) -> str:
-    """Decrypt Level 1 OTP encrypted content."""
     from qkd_client import get_key
     
     envelope = json.loads(base64.b64decode(encrypted_body))
@@ -275,7 +233,6 @@ async def _decrypt_aes(
     key_id: Optional[str],
     metadata: Dict[str, Any],
 ) -> str:
-    """Decrypt Level 2 AES-GCM encrypted content."""
     from qkd_client import get_key
     
     envelope = json.loads(base64.b64decode(encrypted_body))
@@ -298,7 +255,6 @@ async def _decrypt_pqc(
     key_id: Optional[str],
     metadata: Dict[str, Any],
 ) -> str:
-    """Decrypt Level 3 PQC encrypted content."""
     from qkd_client import get_key
     from key_store import get_private_key
     
@@ -330,7 +286,6 @@ async def _encrypt_attachment(
     security_level: int,
     key_id: Optional[str],
 ) -> bytes:
-    """Encrypt attachment using the same key as the email body."""
     from qkd_client import get_key
     
     if security_level == 2:
@@ -352,7 +307,6 @@ async def _decrypt_otp_bytes(
     key_id: Optional[str],
     envelope: Dict[str, Any],
 ) -> bytes:
-    """Decrypt OTP encrypted bytes."""
     from qkd_client import get_key
     key_response = await get_key(key_id)
     return otp_decrypt(ciphertext, key_response["key_material"])
@@ -363,7 +317,6 @@ async def _decrypt_aes_bytes(
     key_id: Optional[str],
     envelope: Dict[str, Any],
 ) -> bytes:
-    """Decrypt AES-GCM encrypted bytes."""
     from qkd_client import get_key
     
     key_response = await get_key(key_id)
@@ -380,7 +333,6 @@ async def _decrypt_pqc_bytes(
     key_id: Optional[str],
     envelope: Dict[str, Any],
 ) -> bytes:
-    """Decrypt PQC encrypted bytes."""
     from qkd_client import get_key
     from key_store import get_private_key
     

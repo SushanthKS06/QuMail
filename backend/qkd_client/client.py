@@ -1,10 +1,3 @@
-"""
-QKD Key Manager Client
-
-REST client for the ETSI GS QKD 014-compliant Key Manager.
-Handles key requests, retrieval, consumption, and status checks.
-"""
-
 import base64
 import logging
 from datetime import datetime, timezone
@@ -23,7 +16,6 @@ _last_sync: Optional[datetime] = None
 
 
 async def _get_client() -> httpx.AsyncClient:
-    """Get or create HTTP client for KM communication."""
     global _http_client
     if _http_client is None or _http_client.is_closed:
         _http_client = httpx.AsyncClient(
@@ -42,21 +34,6 @@ async def request_key(
     size: int,
     key_type: str = "aes_seed",
 ) -> KeyResponse:
-    """
-    Request new key material from the Key Manager.
-    
-    Args:
-        peer_id: Identifier of the communication peer (recipient email)
-        size: Requested key size in bytes
-        key_type: Type of key (otp, aes_seed)
-    
-    Returns:
-        KeyResponse with key_id and key_material
-    
-    Raises:
-        KeyRequestError: If request fails
-        KeyExhaustedError: If insufficient key material
-    """
     global _last_sync
     client = await _get_client()
     
@@ -104,21 +81,6 @@ async def request_key(
 
 
 async def get_key(key_id: str) -> KeyResponse:
-    """
-    Retrieve a key by its ID.
-    
-    Used for decryption when the key_id is known from the email metadata.
-    
-    Args:
-        key_id: Unique key identifier
-    
-    Returns:
-        KeyResponse with key material
-    
-    Raises:
-        KeyNotFoundError: If key doesn't exist
-        KeyExhaustedError: If key was already consumed (for OTP)
-    """
     client = await _get_client()
     
     try:
@@ -150,20 +112,6 @@ async def get_key(key_id: str) -> KeyResponse:
 
 
 async def consume_key(key_id: str) -> bool:
-    """
-    Mark a key as consumed (for OTP one-time usage).
-    
-    After consumption, the key cannot be retrieved again.
-    
-    Args:
-        key_id: Key to mark as consumed
-    
-    Returns:
-        True if successfully consumed
-    
-    Raises:
-        KeyExhaustedError: If already consumed
-    """
     client = await _get_client()
     
     try:
@@ -183,15 +131,6 @@ async def consume_key(key_id: str) -> bool:
 
 
 async def get_key_status(peer_id: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Get available key material status from the Key Manager.
-    
-    Args:
-        peer_id: Optional peer to filter by
-    
-    Returns:
-        Dict with connection status and available key material
-    """
     client = await _get_client()
     
     try:
@@ -233,19 +172,6 @@ async def get_key_status(peer_id: Optional[str] = None) -> Dict[str, Any]:
 
 
 async def request_key_refresh(key_type: str, size: int) -> Dict[str, Any]:
-    """
-    Request pre-provisioning of key material.
-    
-    This proactively requests keys to ensure availability
-    for future encryption operations.
-    
-    Args:
-        key_type: Type of keys to provision (otp, aes, pqc)
-        size: Amount to provision
-    
-    Returns:
-        Dict with keys_added count
-    """
     client = await _get_client()
     
     try:

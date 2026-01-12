@@ -12,12 +12,7 @@ interface Props {
     fallback?: React.ReactNode
 }
 
-/**
- * Error Boundary Component
- *
- * Catches JavaScript errors in child components and displays
- * a user-friendly error message instead of crashing the app.
- */
+
 export class ErrorBoundary extends React.Component<Props, ErrorState> {
     constructor(props: Props) {
         super(props)
@@ -46,7 +41,7 @@ export class ErrorBoundary extends React.Component<Props, ErrorState> {
             return (
                 <div className="error-boundary">
                     <div className="error-content">
-                        <div className="error-icon">⚠️</div>
+                        <div className="error-icon"></div>
                         <h2>Something went wrong</h2>
                         <p className="error-message">
                             {this.state.error?.message || 'An unexpected error occurred'}

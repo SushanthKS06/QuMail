@@ -1,9 +1,3 @@
-"""
-MIME Message Builder
-
-Constructs encrypted email MIME messages following the QuMail wire format.
-"""
-
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
@@ -23,28 +17,6 @@ def build_encrypted_mime(
     key_id: Optional[str] = None,
     attachments: Optional[List[dict]] = None,
 ) -> MIMEMultipart:
-    """
-    Build a MIME message with encrypted content.
-    
-    The message follows the QuMail wire format:
-    - Standard email headers (readable by servers)
-    - X-QuMail-* headers for encryption metadata
-    - Encrypted body as application/x-qumail-envelope
-    - Encrypted attachments as application/x-qumail-attachment
-    
-    Args:
-        from_addr: Sender email address
-        to_addrs: List of recipient addresses
-        cc_addrs: List of CC addresses
-        subject: Email subject (visible to servers)
-        encrypted_body: Base64-encoded encrypted content
-        security_level: 1 (OTP), 2 (AES), 3 (PQC)
-        key_id: Key identifier for decryption
-        attachments: Optional encrypted attachments
-    
-    Returns:
-        MIMEMultipart message ready for sending
-    """
     message = MIMEMultipart("mixed", boundary=QUMAIL_BOUNDARY)
     
     message["From"] = from_addr
@@ -98,11 +70,6 @@ def build_plain_mime(
     body: str,
     attachments: Optional[List[dict]] = None,
 ) -> MIMEMultipart:
-    """
-    Build a standard unencrypted MIME message.
-    
-    Used for Level 4 (no security) emails.
-    """
     if attachments:
         message = MIMEMultipart("mixed")
     else:

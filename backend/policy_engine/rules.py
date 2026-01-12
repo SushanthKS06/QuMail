@@ -1,16 +1,9 @@
-"""
-Security Rules
-
-Defines security rules and constraints for the policy engine.
-"""
-
 from dataclasses import dataclass
 from typing import List, Optional
 
 
 @dataclass
 class LevelRequirements:
-    """Requirements for a security level."""
     level: int
     name: str
     requires_km: bool
@@ -20,12 +13,6 @@ class LevelRequirements:
 
 
 class SecurityRules:
-    """
-    Security rules for email encryption.
-    
-    Defines what is required for each security level
-    and constraints on their use.
-    """
     
     LEVEL_REQUIREMENTS = {
         1: LevelRequirements(
@@ -68,7 +55,6 @@ class SecurityRules:
         self.require_encryption_for_attachments = False
     
     def get_requirements(self, level: int) -> LevelRequirements:
-        """Get requirements for a security level."""
         return self.LEVEL_REQUIREMENTS.get(level)
     
     def can_use_level(
@@ -78,18 +64,6 @@ class SecurityRules:
         has_recipient_key: bool,
         message_size: int,
     ) -> tuple[bool, Optional[str]]:
-        """
-        Check if a security level can be used.
-        
-        Args:
-            level: Security level to check
-            km_connected: Whether Key Manager is connected
-            has_recipient_key: Whether recipient's public key is available
-            message_size: Total message size in bytes
-        
-        Returns:
-            Tuple of (can_use, reason_if_not)
-        """
         req = self.get_requirements(level)
         if not req:
             return False, f"Invalid security level: {level}"
@@ -110,7 +84,6 @@ class SecurityRules:
         km_connected: bool,
         has_recipient_key: bool,
     ) -> List[int]:
-        """Get list of available security levels."""
         available = [4]
         
         if km_connected:

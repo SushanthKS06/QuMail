@@ -1,9 +1,3 @@
-"""
-OAuth2 Token Management
-
-Handles OAuth2 token storage, refresh, and validation.
-"""
-
 import logging
 from datetime import datetime, timezone
 
@@ -15,20 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 async def get_valid_token(email: str) -> str:
-    """
-    Get a valid access token for the specified email account.
-    
-    Automatically refreshes if expired.
-    
-    Args:
-        email: Email address of the account
-    
-    Returns:
-        Valid access token
-    
-    Raises:
-        ValueError: If no token exists or refresh fails
-    """
     from storage.database import get_oauth_tokens, store_oauth_tokens
     
     tokens = await get_oauth_tokens(email)
@@ -59,18 +39,6 @@ async def get_valid_token(email: str) -> str:
 
 
 async def refresh_oauth_token(refresh_token: str) -> dict:
-    """
-    Refresh an OAuth2 access token.
-    
-    Args:
-        refresh_token: The refresh token
-    
-    Returns:
-        Dict with new access_token and optionally new refresh_token
-    
-    Raises:
-        ValueError: If refresh fails
-    """
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "https://oauth2.googleapis.com/token",
@@ -90,15 +58,6 @@ async def refresh_oauth_token(refresh_token: str) -> dict:
 
 
 async def revoke_oauth_token(token: str) -> bool:
-    """
-    Revoke an OAuth2 token.
-    
-    Args:
-        token: Access or refresh token to revoke
-    
-    Returns:
-        True if revocation succeeded
-    """
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "https://oauth2.googleapis.com/revoke",

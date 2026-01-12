@@ -1,9 +1,3 @@
-"""
-Storage Package
-
-Handles persistent storage using SQLite with encryption.
-"""
-
 from .database import (
     init_database,
     store_oauth_tokens,

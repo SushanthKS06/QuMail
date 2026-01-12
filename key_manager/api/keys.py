@@ -1,9 +1,3 @@
-"""
-Keys API
-
-ETSI GS QKD 014-style REST API for key management.
-"""
-
 import base64
 import logging
 from datetime import datetime, timezone
@@ -17,14 +11,12 @@ router = APIRouter()
 
 
 class KeyRequestBody(BaseModel):
-    """Request for new key material."""
     peer_id: str
     size: int = Field(gt=0, le=1024 * 1024)
     key_type: str = "aes_seed"
 
 
 class KeyResponse(BaseModel):
-    """Response with key material."""
     key_id: str
     key_material: str
     peer_id: str
@@ -34,7 +26,6 @@ class KeyResponse(BaseModel):
 
 
 class KeyStatusResponse(BaseModel):
-    """Response with key metadata (no material)."""
     key_id: str
     peer_id: str
     key_type: str
@@ -43,35 +34,22 @@ class KeyStatusResponse(BaseModel):
 
 
 class ConsumeResponse(BaseModel):
-    """Response after consuming a key."""
     success: bool
     consumed_at: str
 
 
 class ProvisionRequest(BaseModel):
-    """Request to provision more keys."""
     key_type: str
     size: int
 
 
 class ProvisionResponse(BaseModel):
-    """Response after provisioning."""
     success: bool
     keys_added: int
 
 
 @router.post("/request", response_model=KeyResponse)
 async def request_key(request: Request, body: KeyRequestBody):
-    """
-    Request new key material from the QKD system.
-    
-    This simulates the ETSI QKD 014 /enc_keys endpoint.
-    
-    Returns a new key with:
-    - Unique key_id for later retrieval
-    - Base64-encoded key material
-    - Creation and expiration timestamps
-    """
     key_pool = request.app.state.key_pool
     
     try:
@@ -105,12 +83,6 @@ async def request_key(request: Request, body: KeyRequestBody):
 
 @router.get("/{key_id}", response_model=KeyResponse)
 async def get_key(request: Request, key_id: str):
-    """
-    Retrieve key material by ID.
-    
-    Used by recipients to get the decryption key.
-    For OTP keys, this returns the key only if not consumed.
-    """
     key_pool = request.app.state.key_pool
     
     key_entry = key_pool.get_key(key_id)
@@ -138,12 +110,6 @@ async def get_key(request: Request, key_id: str):
 
 @router.post("/{key_id}/consume", response_model=ConsumeResponse)
 async def consume_key(request: Request, key_id: str):
-    """
-    Mark a key as consumed (one-time use enforcement).
-    
-    After consumption, the key cannot be retrieved again.
-    This is REQUIRED for OTP keys to maintain security.
-    """
     key_pool = request.app.state.key_pool
     
     success = key_pool.consume_key(key_id)
@@ -171,11 +137,6 @@ async def consume_key(request: Request, key_id: str):
 
 @router.delete("/{key_id}")
 async def delete_key(request: Request, key_id: str):
-    """
-    Emergency key revocation.
-    
-    Immediately destroys the key material.
-    """
     key_pool = request.app.state.key_pool
     
     success = key_pool.delete_key(key_id)
@@ -196,12 +157,6 @@ async def delete_key(request: Request, key_id: str):
 
 @router.post("/provision", response_model=ProvisionResponse)
 async def provision_keys(request: Request, body: ProvisionRequest):
-    """
-    Request pre-provisioning of key material.
-    
-    In real QKD, this would trigger key generation.
-    In simulation, we generate random bytes.
-    """
     key_pool = request.app.state.key_pool
     
     if body.key_type == "otp":

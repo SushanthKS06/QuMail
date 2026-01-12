@@ -1,10 +1,3 @@
-"""
-SMTP Handler
-
-Async SMTP client for sending encrypted emails.
-Uses aiosmtplib for non-blocking operations.
-"""
-
 import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -35,24 +28,6 @@ async def send_email(
     key_id: Optional[str] = None,
     attachments: Optional[List[dict]] = None,
 ) -> str:
-    """
-    Send an email via SMTP.
-    
-    For security levels 1-3, the body is already encrypted.
-    This function wraps it in the appropriate MIME structure.
-    
-    Args:
-        to: List of recipient email addresses
-        cc: List of CC email addresses
-        subject: Email subject (visible to servers)
-        body: Email body (encrypted for levels 1-3)
-        security_level: 1-4 indicating encryption level
-        key_id: Key identifier for encrypted emails
-        attachments: Optional list of attachment dicts
-    
-    Returns:
-        Message ID of the sent email
-    """
     from storage.database import get_stored_accounts
     
     accounts = await get_stored_accounts()
@@ -144,11 +119,6 @@ async def send_email_raw(
     raw_message: bytes,
     access_token: str,
 ) -> str:
-    """
-    Send a raw email message.
-    
-    Used for forwarding or sending pre-built messages.
-    """
     smtp = aiosmtplib.SMTP(
         hostname=GMAIL_SMTP_HOST,
         port=GMAIL_SMTP_PORT,

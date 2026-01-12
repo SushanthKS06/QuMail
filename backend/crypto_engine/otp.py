@@ -1,37 +1,9 @@
-"""
-One-Time Pad (OTP) Implementation
-
-Level 1 Security: Information-theoretic secure encryption.
-
-CRITICAL SECURITY REQUIREMENTS:
-1. Key length MUST equal message length
-2. Key MUST be truly random (from QKD)
-3. Key MUST be used exactly once
-4. Key MUST be securely destroyed after use
-
-This provides perfect secrecy - even with infinite computational
-power, an attacker cannot break OTP if these rules are followed.
-"""
-
 import hmac
 import hashlib
 from typing import Tuple
 
 
 def otp_encrypt(plaintext: bytes, key: bytes) -> bytes:
-    """
-    Encrypt data using One-Time Pad (XOR).
-    
-    Args:
-        plaintext: Data to encrypt
-        key: Random key material (must be same length as plaintext)
-    
-    Returns:
-        Ciphertext (XOR of plaintext and key)
-    
-    Raises:
-        ValueError: If key length doesn't match plaintext length
-    """
     if len(key) < len(plaintext):
         raise ValueError(
             f"OTP key length ({len(key)}) must be >= plaintext length ({len(plaintext)}). "
@@ -47,18 +19,6 @@ def otp_encrypt(plaintext: bytes, key: bytes) -> bytes:
 
 
 def otp_decrypt(ciphertext: bytes, key: bytes) -> bytes:
-    """
-    Decrypt data using One-Time Pad (XOR).
-    
-    XOR is symmetric: decrypt is the same operation as encrypt.
-    
-    Args:
-        ciphertext: Encrypted data
-        key: Same key used for encryption
-    
-    Returns:
-        Decrypted plaintext
-    """
     return otp_encrypt(ciphertext, key)
 
 
@@ -67,20 +27,6 @@ def otp_encrypt_with_mac(
     encryption_key: bytes,
     mac_key: bytes,
 ) -> Tuple[bytes, bytes]:
-    """
-    Encrypt with OTP and append HMAC for integrity.
-    
-    While OTP provides confidentiality, it doesn't provide integrity.
-    This adds HMAC-SHA256 for message authentication.
-    
-    Args:
-        plaintext: Data to encrypt
-        encryption_key: OTP key (same length as plaintext)
-        mac_key: Separate key for HMAC (at least 32 bytes)
-    
-    Returns:
-        Tuple of (ciphertext, mac)
-    """
     if len(mac_key) < 32:
         raise ValueError("MAC key must be at least 32 bytes")
     
@@ -97,21 +43,6 @@ def otp_decrypt_with_mac(
     encryption_key: bytes,
     mac_key: bytes,
 ) -> bytes:
-    """
-    Verify MAC and decrypt OTP ciphertext.
-    
-    Args:
-        ciphertext: Encrypted data
-        mac: HMAC to verify
-        encryption_key: OTP key
-        mac_key: HMAC key
-    
-    Returns:
-        Decrypted plaintext
-    
-    Raises:
-        ValueError: If MAC verification fails
-    """
     expected_mac = hmac.new(mac_key, ciphertext, hashlib.sha256).digest()
     
     if not hmac.compare_digest(mac, expected_mac):
@@ -121,16 +52,6 @@ def otp_decrypt_with_mac(
 
 
 def verify_otp_security(key: bytes, plaintext_length: int) -> dict:
-    """
-    Verify OTP security requirements are met.
-    
-    Args:
-        key: The key to verify
-        plaintext_length: Length of the plaintext
-    
-    Returns:
-        Dict with verification results
-    """
     issues = []
     
     if len(key) < plaintext_length:

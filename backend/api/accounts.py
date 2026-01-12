@@ -1,9 +1,3 @@
-"""
-Accounts API Routes
-
-Multi-account management endpoints.
-"""
-
 import logging
 from typing import List
 
@@ -18,7 +12,6 @@ router = APIRouter()
 
 
 class AccountSummary(BaseModel):
-    """Account summary for API response."""
     id: str
     email: str
     provider: str
@@ -28,19 +21,16 @@ class AccountSummary(BaseModel):
 
 
 class AccountListResponse(BaseModel):
-    """Response for account list."""
     accounts: List[AccountSummary]
     active_account_id: str | None
 
 
 class SetActiveRequest(BaseModel):
-    """Request to set active account."""
     account_id: str
 
 
 @router.get("", response_model=AccountListResponse)
 async def list_accounts(token: TokenDep):
-    """List all configured email accounts."""
     manager = await get_account_manager()
     
     accounts = manager.list_accounts()
@@ -64,7 +54,6 @@ async def list_accounts(token: TokenDep):
 
 @router.post("/active")
 async def set_active_account(token: TokenDep, request: SetActiveRequest):
-    """Set the active email account."""
     manager = await get_account_manager()
     
     success = await manager.set_active_account(request.account_id)
@@ -80,7 +69,6 @@ async def set_active_account(token: TokenDep, request: SetActiveRequest):
 
 @router.delete("/{account_id}")
 async def remove_account(token: TokenDep, account_id: str):
-    """Remove an email account."""
     manager = await get_account_manager()
     
     success = await manager.remove_account(account_id)
@@ -96,7 +84,6 @@ async def remove_account(token: TokenDep, account_id: str):
 
 @router.get("/active")
 async def get_active_account(token: TokenDep):
-    """Get the currently active account."""
     manager = await get_account_manager()
     
     account = manager.get_active_account()

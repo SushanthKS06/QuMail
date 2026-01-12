@@ -1,10 +1,3 @@
-"""
-API Dependencies
-
-Provides FastAPI dependencies for authentication, validation,
-and resource injection.
-"""
-
 import logging
 from typing import Annotated
 
@@ -20,7 +13,6 @@ _http_client: httpx.AsyncClient | None = None
 
 
 async def get_http_client() -> httpx.AsyncClient:
-    """Get or create HTTP client for external requests."""
     global _http_client
     if _http_client is None or _http_client.is_closed:
         _http_client = httpx.AsyncClient(timeout=settings.km_timeout)
@@ -30,13 +22,6 @@ async def get_http_client() -> httpx.AsyncClient:
 async def verify_api_token(
     authorization: Annotated[str | None, Header()] = None
 ) -> str:
-    """
-    Verify the API bearer token from frontend.
-    
-    This ensures only the legitimate Electron frontend can communicate
-    with the backend. The token is generated at startup and shared
-    securely via IPC.
-    """
     if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -74,7 +59,6 @@ TokenDep = Annotated[str, Depends(verify_api_token)]
 
 
 async def verify_startup_requirements() -> None:
-    """Verify all startup requirements are met."""
     client = await get_http_client()
     
     try:

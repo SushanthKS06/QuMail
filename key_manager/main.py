@@ -1,21 +1,3 @@
-"""
-Simulated QKD Key Manager
-
-This is a SIMULATION of a QKD Key Manager following ETSI GS QKD 014.
-In production, this would interface with actual QKD hardware.
-
-The KM provides:
-- Pre-provisioned symmetric key material
-- Key allocation and lifecycle management
-- One-time key consumption enforcement
-- Status reporting
-
-⚠️ SIMULATION NOTICE ⚠️
-This uses cryptographically secure random numbers (CSPRNG) to
-simulate QKD output. Real QKD uses quantum physics for true randomness.
-For demonstration and testing purposes only.
-"""
-
 import logging
 import sys
 from contextlib import asynccontextmanager
@@ -40,13 +22,12 @@ key_pool: KeyPool = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan handler."""
     global key_pool
     
     logger.info("=" * 60)
     logger.info("Starting Simulated QKD Key Manager v%s", settings.app_version)
     logger.info("=" * 60)
-    logger.warning("⚠️  SIMULATION MODE - Not real QKD hardware")
+    logger.warning("SIMULATION MODE - Not real QKD hardware")
     logger.info("Binding to %s:%d", settings.host, settings.port)
     
     key_pool = KeyPool()
@@ -87,7 +68,6 @@ app.include_router(status.router, prefix="/api/v1", tags=["Status"])
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
     return {
         "status": "healthy",
         "version": settings.app_version,

@@ -1,10 +1,3 @@
-"""
-Email API Routes
-
-Handles email sending, receiving, and management.
-All encryption/decryption happens transparently in the backend.
-"""
-
 import logging
 from datetime import datetime
 from typing import List, Optional
@@ -24,14 +17,12 @@ router = APIRouter()
 
 
 class AttachmentMeta(BaseModel):
-    """Attachment metadata."""
     filename: str
     size: int
     content_type: str
 
 
 class EmailSummary(BaseModel):
-    """Email summary for listing."""
     message_id: str
     from_address: str = Field(alias="from")
     to: List[str]
@@ -44,7 +35,6 @@ class EmailSummary(BaseModel):
 
 
 class EmailDetail(BaseModel):
-    """Full email detail."""
     message_id: str
     from_address: str = Field(alias="from")
     to: List[str]
@@ -60,7 +50,6 @@ class EmailDetail(BaseModel):
 
 
 class SendEmailRequest(BaseModel):
-    """Request to send an email."""
     to: List[EmailStr]
     cc: List[EmailStr] = []
     subject: str
@@ -70,7 +59,6 @@ class SendEmailRequest(BaseModel):
 
 
 class SendEmailResponse(BaseModel):
-    """Response after sending email."""
     success: bool
     message_id: Optional[str] = None
     key_id: Optional[str] = None
@@ -79,14 +67,12 @@ class SendEmailResponse(BaseModel):
 
 
 class EmailListResponse(BaseModel):
-    """Response for email list."""
     emails: List[EmailSummary]
     total: int
     has_more: bool
 
 
 class DraftRequest(BaseModel):
-    """Request to save draft."""
     to: List[str] = []
     cc: List[str] = []
     subject: str = ""
@@ -95,7 +81,6 @@ class DraftRequest(BaseModel):
 
 
 class DraftResponse(BaseModel):
-    """Response after saving draft."""
     draft_id: str
     saved_at: datetime
 
@@ -108,12 +93,6 @@ async def list_emails(
     limit: int = Query(default=20, ge=1, le=50),
     decrypt: bool = Query(default=True),
 ):
-    """
-    Fetch emails from the specified folder.
-    
-    Encrypted emails are automatically decrypted if decrypt=True.
-    The security_level field indicates the encryption used.
-    """
     try:
         offset = (page - 1) * limit
         
@@ -161,11 +140,6 @@ async def list_emails(
 
 @router.get("/{message_id}", response_model=EmailDetail)
 async def get_email(token: TokenDep, message_id: str):
-    """
-    Get full email content by message ID.
-    
-    Automatically decrypts the email body and attachments.
-    """
     try:
         email = await get_email_by_id(message_id)
         
@@ -223,15 +197,6 @@ async def send_email_endpoint(
     request: SendEmailRequest,
     background_tasks: BackgroundTasks,
 ):
-    """
-    Send an encrypted email.
-    
-    Security Levels:
-    - 1: One-Time Pad (requires sufficient QKD key material)
-    - 2: Quantum-Aided AES-256-GCM (default)
-    - 3: Post-Quantum Crypto (Kyber + Dilithium)
-    - 4: Plain text (no encryption)
-    """
     try:
         validation = await validate_send_request(
             recipients=request.to + request.cc,
@@ -299,7 +264,6 @@ async def send_email_endpoint(
 
 @router.post("/draft", response_model=DraftResponse)
 async def save_draft(token: TokenDep, request: DraftRequest):
-    """Save email as draft."""
     from storage.database import save_email_draft
     
     draft_id = str(uuid4())
@@ -319,7 +283,6 @@ async def save_draft(token: TokenDep, request: DraftRequest):
 
 @router.delete("/{message_id}")
 async def delete_email(token: TokenDep, message_id: str):
-    """Delete an email."""
     from email_service import delete_email as do_delete
     
     try:
@@ -335,7 +298,6 @@ async def delete_email(token: TokenDep, message_id: str):
 
 @router.get("/{message_id}/attachment/{attachment_id}")
 async def get_attachment(token: TokenDep, message_id: str, attachment_id: str):
-    """Download and decrypt an attachment."""
     from email_service import get_attachment_content
     from crypto_engine import decrypt_attachment
     

@@ -1,9 +1,3 @@
-"""
-MIME Message Parser
-
-Parses QuMail encrypted email messages.
-"""
-
 import base64
 import email
 import json
@@ -15,18 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 def parse_qumail_message(msg: Message) -> Dict[str, Any]:
-    """
-    Parse a QuMail encrypted email message.
-    
-    Extracts the encrypted envelope and attachments, returning
-    them for decryption by the crypto engine.
-    
-    Args:
-        msg: Email message object
-    
-    Returns:
-        Dict with encrypted_body, metadata, and attachments
-    """
     result = {
         "encrypted_body": None,
         "body": "",
@@ -80,15 +62,6 @@ def parse_qumail_message(msg: Message) -> Dict[str, Any]:
 
 
 def extract_envelope_data(encrypted_body: str) -> Dict[str, Any]:
-    """
-    Extract and decode the envelope data from an encrypted body.
-    
-    Args:
-        encrypted_body: Base64-encoded encrypted envelope
-    
-    Returns:
-        Decoded envelope dict
-    """
     try:
         decoded = base64.b64decode(encrypted_body)
         envelope = json.loads(decoded)
@@ -99,12 +72,10 @@ def extract_envelope_data(encrypted_body: str) -> Dict[str, Any]:
 
 
 def is_qumail_message(msg: Message) -> bool:
-    """Check if a message is a QuMail encrypted email."""
     return msg.get("X-QuMail-Version") is not None
 
 
 def get_security_level(msg: Message) -> int:
-    """Get the security level of a QuMail message."""
     if not is_qumail_message(msg):
         return 4
     
@@ -115,5 +86,4 @@ def get_security_level(msg: Message) -> int:
 
 
 def get_key_id(msg: Message) -> Optional[str]:
-    """Get the key ID from a QuMail message."""
     return msg.get("X-QuMail-Key-ID")

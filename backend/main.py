@@ -1,15 +1,3 @@
-"""
-QuMail Backend - Main Application Entry Point
-
-This is the security core of QuMail. All cryptographic operations,
-key management, and email protocol handling occurs here.
-
-Security Notes:
-- Binds to 127.0.0.1 only (no external access)
-- All endpoints require bearer token authentication
-- Keys never touch disk unencrypted
-"""
-
 import logging
 import sys
 from contextlib import asynccontextmanager
@@ -33,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan handler for startup/shutdown."""
     logger.info("Starting QuMail Backend v%s", settings.app_version)
     logger.info("Binding to %s:%d (localhost only)", settings.host, settings.port)
     
@@ -73,7 +60,6 @@ app.include_router(accounts.router, prefix="/api/v1/accounts", tags=["Accounts"]
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
     return {
         "status": "healthy",
         "version": settings.app_version,

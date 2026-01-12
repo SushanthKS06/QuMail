@@ -1,10 +1,3 @@
-"""
-Database Management
-
-SQLite database for persistent storage of accounts, recipients,
-drafts, and email metadata.
-"""
-
 import json
 import logging
 from datetime import datetime, timezone, timedelta
@@ -21,7 +14,6 @@ _db_connection: Optional[aiosqlite.Connection] = None
 
 
 async def get_db() -> aiosqlite.Connection:
-    """Get or create database connection."""
     global _db_connection
     if _db_connection is None:
         _db_connection = await aiosqlite.connect(settings.db_path)
@@ -30,7 +22,6 @@ async def get_db() -> aiosqlite.Connection:
 
 
 async def init_database() -> None:
-    """Initialize database schema."""
     db = await get_db()
     
     await db.execute("""
@@ -105,7 +96,6 @@ async def store_oauth_tokens(
     refresh_token: Optional[str],
     expires_in: int,
 ) -> None:
-    """Store OAuth tokens for an account."""
     db = await get_db()
     
     expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
@@ -124,7 +114,6 @@ async def store_oauth_tokens(
 
 
 async def get_oauth_tokens(email: str) -> Optional[Dict[str, Any]]:
-    """Get OAuth tokens for an account."""
     db = await get_db()
     
     cursor = await db.execute(
@@ -144,7 +133,6 @@ async def get_oauth_tokens(email: str) -> Optional[Dict[str, Any]]:
 
 
 async def get_stored_accounts() -> List[Dict[str, Any]]:
-    """Get all stored accounts."""
     db = await get_db()
     
     cursor = await db.execute("SELECT * FROM accounts")
@@ -161,7 +149,6 @@ async def get_stored_accounts() -> List[Dict[str, Any]]:
 
 
 async def get_known_recipient(email: str) -> Optional[Dict[str, Any]]:
-    """Get a known recipient's information."""
     db = await get_db()
     
     cursor = await db.execute(
@@ -187,7 +174,6 @@ async def store_known_recipient(
     public_key: Optional[str] = None,
     supported_levels: Optional[List[int]] = None,
 ) -> None:
-    """Store or update a known recipient."""
     db = await get_db()
     
     import hashlib
@@ -219,7 +205,6 @@ async def save_email_draft(
     body: str,
     security_level: int,
 ) -> None:
-    """Save an email draft."""
     db = await get_db()
     
     await db.execute("""
@@ -247,7 +232,6 @@ async def save_sent_email(
     security_level: int,
     key_id: Optional[str],
 ) -> None:
-    """Save sent email metadata."""
     db = await get_db()
     
     import hashlib
@@ -271,7 +255,6 @@ async def save_sent_email(
 
 
 async def log_audit_event(event_type: str, event_data: Dict[str, Any]) -> None:
-    """Log a security-relevant event."""
     db = await get_db()
     
     await db.execute(

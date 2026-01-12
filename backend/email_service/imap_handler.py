@@ -1,10 +1,3 @@
-"""
-IMAP Handler
-
-Handles email retrieval and management via IMAP.
-Uses imapclient for robust IMAP operations.
-"""
-
 import email
 import logging
 from datetime import datetime
@@ -24,7 +17,6 @@ GMAIL_IMAP_PORT = 993
 
 
 def _decode_header_value(value: Any) -> str:
-    """Decode an email header value."""
     if value is None:
         return ""
     
@@ -49,7 +41,6 @@ def _decode_header_value(value: Any) -> str:
 
 
 def _parse_email_addresses(value: str) -> List[str]:
-    """Parse email addresses from a header value."""
     if not value:
         return []
     
@@ -64,17 +55,6 @@ async def fetch_emails(
     offset: int = 0,
     limit: int = 20,
 ) -> Tuple[List[Dict[str, Any]], int]:
-    """
-    Fetch emails from the specified folder.
-    
-    Args:
-        folder: IMAP folder name (INBOX, SENT, DRAFTS)
-        offset: Number of emails to skip
-        limit: Maximum emails to return
-    
-    Returns:
-        Tuple of (emails list, total count)
-    """
     from storage.database import get_stored_accounts
     
     accounts = await get_stored_accounts()
@@ -156,15 +136,6 @@ async def fetch_emails(
 
 
 async def get_email_by_id(message_id: str) -> Optional[Dict[str, Any]]:
-    """
-    Fetch a complete email by its message ID.
-    
-    Args:
-        message_id: IMAP message UID
-    
-    Returns:
-        Complete email dict or None if not found
-    """
     from storage.database import get_stored_accounts
     
     accounts = await get_stored_accounts()
@@ -226,9 +197,6 @@ async def get_email_by_id(message_id: str) -> Optional[Dict[str, Any]]:
 
 
 async def delete_email(message_id: str) -> bool:
-    """
-    Delete an email by moving to trash.
-    """
     from storage.database import get_stored_accounts
     
     accounts = await get_stored_accounts()
@@ -263,9 +231,6 @@ async def get_attachment_content(
     message_id: str,
     attachment_id: str,
 ) -> Optional[Dict[str, Any]]:
-    """
-    Fetch attachment content from an email.
-    """
     email_data = await get_email_by_id(message_id)
     if not email_data:
         return None
@@ -278,7 +243,6 @@ async def get_attachment_content(
 
 
 def _map_folder_name(folder: str) -> str:
-    """Map friendly folder names to IMAP folder paths."""
     mapping = {
         "INBOX": "INBOX",
         "SENT": "[Gmail]/Sent Mail",
@@ -291,7 +255,6 @@ def _map_folder_name(folder: str) -> str:
 
 
 def _parse_regular_email(msg: email.message.Message) -> Dict[str, Any]:
-    """Parse a regular (non-QuMail) email message."""
     body = ""
     html_body = None
     attachments = []

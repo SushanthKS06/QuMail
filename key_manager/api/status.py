@@ -1,9 +1,3 @@
-"""
-Status API
-
-Provides key material availability and system status.
-"""
-
 import logging
 
 from fastapi import APIRouter, Request
@@ -16,14 +10,12 @@ router = APIRouter()
 
 
 class KeyAvailability(BaseModel):
-    """Available key material."""
     otp_bytes_available: int
     aes_keys_available: int
     pqc_keys_available: int
 
 
 class SystemStatus(BaseModel):
-    """Full system status."""
     healthy: bool
     simulation_mode: bool
     version: str
@@ -34,11 +26,6 @@ class SystemStatus(BaseModel):
 
 @router.get("/keys/status", response_model=KeyAvailability)
 async def get_key_status(request: Request, peer_id: str = None):
-    """
-    Get available key material.
-    
-    Optionally filter by peer_id.
-    """
     key_pool = request.app.state.key_pool
     
     stats = key_pool.get_stats()
@@ -52,9 +39,6 @@ async def get_key_status(request: Request, peer_id: str = None):
 
 @router.get("/status", response_model=SystemStatus)
 async def get_system_status(request: Request):
-    """
-    Get full system status.
-    """
     key_pool = request.app.state.key_pool
     
     stats = key_pool.get_stats()

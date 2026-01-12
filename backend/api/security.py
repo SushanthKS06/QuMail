@@ -1,9 +1,3 @@
-"""
-Security API Routes
-
-Provides security status, key management, and recipient capability checking.
-"""
-
 import logging
 from datetime import datetime
 from typing import List, Optional
@@ -20,14 +14,12 @@ router = APIRouter()
 
 
 class KeyMaterialStatus(BaseModel):
-    """Available key material status."""
     otp_bytes: int
     aes_keys: int
     pqc_keys: int
 
 
 class SecurityStatus(BaseModel):
-    """Overall security status."""
     km_connected: bool
     km_url: str
     available_key_material: KeyMaterialStatus
@@ -36,7 +28,6 @@ class SecurityStatus(BaseModel):
 
 
 class RecipientCapability(BaseModel):
-    """Recipient's QuMail capabilities."""
     email: str
     is_qumail_user: bool
     supported_levels: List[int]
@@ -45,13 +36,11 @@ class RecipientCapability(BaseModel):
 
 
 class KeyRefreshRequest(BaseModel):
-    """Request for key material refresh."""
     key_type: str
     size: int
 
 
 class KeyRefreshResponse(BaseModel):
-    """Response after key refresh."""
     success: bool
     keys_added: int
     error: Optional[str] = None
@@ -59,10 +48,6 @@ class KeyRefreshResponse(BaseModel):
 
 @router.get("/status", response_model=SecurityStatus)
 async def get_security_status(token: TokenDep):
-    """
-    Get current security status including Key Manager connectivity
-    and available key material.
-    """
     try:
         km_status = await get_key_status()
         
@@ -103,13 +88,6 @@ async def get_security_status(token: TokenDep):
 
 @router.get("/capabilities/{email}", response_model=RecipientCapability)
 async def check_recipient_capability(token: TokenDep, email: EmailStr):
-    """
-    Check if a recipient is a QuMail user and what security levels
-    they support.
-    
-    This is used to determine available security options when composing
-    an email.
-    """
     from storage.database import get_known_recipient
     
     recipient = await get_known_recipient(email)
@@ -132,12 +110,6 @@ async def check_recipient_capability(token: TokenDep, email: EmailStr):
 
 @router.post("/refresh-keys", response_model=KeyRefreshResponse)
 async def refresh_keys(token: TokenDep, request: KeyRefreshRequest):
-    """
-    Request new key material from the Key Manager.
-    
-    This proactively fetches key material to ensure sufficient
-    keys are available for encryption.
-    """
     if request.key_type not in ("otp", "aes", "pqc"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -179,9 +151,6 @@ async def refresh_keys(token: TokenDep, request: KeyRefreshRequest):
 
 @router.get("/levels")
 async def get_security_levels(token: TokenDep):
-    """
-    Get detailed information about available security levels.
-    """
     return {
         "levels": [
             {
@@ -232,11 +201,6 @@ async def register_recipient(
     email: EmailStr,
     public_key: Optional[str] = None,
 ):
-    """
-    Register a known QuMail recipient for PQC key exchange.
-    
-    This stores the recipient's public key for Level 3 encryption.
-    """
     from storage.database import store_known_recipient
     
     await store_known_recipient(

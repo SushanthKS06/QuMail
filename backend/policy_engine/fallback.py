@@ -1,10 +1,3 @@
-"""
-Fallback Logic
-
-Handles graceful degradation when requested security level
-is not available.
-"""
-
 import logging
 from typing import Any, Dict, List
 
@@ -15,22 +8,6 @@ def get_fallback_level(
     requested_level: int,
     recipient_capabilities: List[Dict[str, Any]],
 ) -> int:
-    """
-    Determine the best fallback security level.
-    
-    Fallback order:
-    - Level 1 (OTP) → Level 2 (AES) → Level 3 (PQC) → Level 4 (Plain)
-    
-    The fallback tries to maintain the highest security level
-    that all recipients support.
-    
-    Args:
-        requested_level: Originally requested level
-        recipient_capabilities: List of recipient capability dicts
-    
-    Returns:
-        Best available security level
-    """
     if not recipient_capabilities:
         return requested_level
     
@@ -65,12 +42,10 @@ def get_fallback_level(
 
 
 def should_warn_downgrade(original: int, actual: int) -> bool:
-    """Check if a security downgrade warrants a warning."""
     return original < actual or (original < 4 and actual == 4)
 
 
 def get_downgrade_message(original: int, actual: int) -> str:
-    """Get a user-friendly message about the security downgrade."""
     level_names = {
         1: "Quantum Secure OTP",
         2: "Quantum-Aided AES",

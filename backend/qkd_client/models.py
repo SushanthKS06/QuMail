@@ -1,7 +1,3 @@
-"""
-QKD Client Data Models
-"""
-
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
@@ -9,7 +5,6 @@ from typing import Optional
 
 @dataclass
 class KeyResponse:
-    """Response from key request/retrieval."""
     key_id: str
     key_material: bytes
     peer_id: str
@@ -21,7 +16,6 @@ class KeyResponse:
 
 @dataclass
 class KeyStatusResponse:
-    """Response from status check."""
     connected: bool
     otp_bytes_available: int
     aes_keys_available: int
