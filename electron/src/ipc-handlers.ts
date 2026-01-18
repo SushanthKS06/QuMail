@@ -1,9 +1,3 @@
-/**
- * IPC Handlers
- * 
- * Handles IPC communication between renderer and main process.
- */
-
 import { ipcMain, BrowserWindow, shell } from 'electron'
 import { getBackendManager } from './backend-manager'
 

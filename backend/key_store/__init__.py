@@ -32,6 +32,19 @@ async def get_private_key(key_type: str) -> bytes:
     return private_key
 
 
+async def store_private_key(key_type: str, private_key: bytes, public_key: bytes = None) -> None:
+    """Store a private key (and optionally paired public key) in both memory and encrypted storage."""
+    _memory_store.store(f"private_{key_type}", private_key)
+    
+    if public_key:
+        _memory_store.store(f"public_{key_type}", public_key)
+    
+    if _encrypted_store:
+        await _encrypted_store.store(f"private_{key_type}", private_key)
+        if public_key:
+            await _encrypted_store.store(f"public_{key_type}", public_key)
+
+
 async def get_public_key(key_type: str) -> bytes:
     key = _memory_store.get(f"public_{key_type}")
     if key:
@@ -68,6 +81,7 @@ async def initialize_store(encryption_key: bytes):
 
 __all__ = [
     "get_private_key",
+    "store_private_key",
     "get_public_key",
     "store_session_key",
     "get_session_key",

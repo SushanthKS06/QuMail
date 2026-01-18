@@ -31,6 +31,7 @@ export interface SendEmailRequest {
     subject: string
     body: string
     security_level: number
+    attachments?: File[]
 }
 
 export interface SendEmailResponse {

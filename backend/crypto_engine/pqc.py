@@ -1,6 +1,9 @@
+import hashlib
+import hmac
 import logging
 import os
-from typing import Optional, Tuple
+import threading
+from typing import Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +25,23 @@ except ImportError:
 KYBER_VARIANT = "Kyber768"
 DILITHIUM_VARIANT = "Dilithium3"
 
+_simulation_cache_lock = threading.RLock()
+_kyber_cache: Dict[bytes, bytes] = {}
+_dilithium_cache: Dict[bytes, Tuple[bytes, bytes]] = {}
+
+MAX_CACHE_SIZE = 10000
+
+
+def _cache_cleanup():
+    if len(_kyber_cache) > MAX_CACHE_SIZE:
+        keys_to_remove = list(_kyber_cache.keys())[:MAX_CACHE_SIZE // 2]
+        for k in keys_to_remove:
+            _kyber_cache.pop(k, None)
+    if len(_dilithium_cache) > MAX_CACHE_SIZE:
+        keys_to_remove = list(_dilithium_cache.keys())[:MAX_CACHE_SIZE // 2]
+        for k in keys_to_remove:
+            _dilithium_cache.pop(k, None)
+
 
 class SimulatedKyber:
     
@@ -35,10 +55,20 @@ class SimulatedKyber:
     def encap(self, public_key: bytes) -> Tuple[bytes, bytes]:
         ciphertext = os.urandom(1088)
         shared_secret = os.urandom(32)
+        with _simulation_cache_lock:
+            _cache_cleanup()
+            _kyber_cache[ciphertext] = shared_secret
+        logger.debug("Simulated Kyber encap: cached shared_secret for ciphertext")
         return ciphertext, shared_secret
     
     def decap(self, ciphertext: bytes, secret_key: bytes) -> bytes:
-        return os.urandom(32)
+        with _simulation_cache_lock:
+            if ciphertext in _kyber_cache:
+                shared_secret = _kyber_cache[ciphertext]
+                logger.debug("Simulated Kyber decap: retrieved shared_secret from cache")
+                return shared_secret
+        logger.warning("Simulated Kyber decap: ciphertext not in cache, using deterministic fallback")
+        return hashlib.sha256(ciphertext + secret_key).digest()
 
 
 class SimulatedDilithium:
@@ -51,9 +81,19 @@ class SimulatedDilithium:
         return self.public_key, self.secret_key
     
     def sign(self, message: bytes, secret_key: bytes) -> bytes:
-        return os.urandom(3293)
+        signature = hmac.new(secret_key[:64], message, hashlib.sha512).digest()
+        signature_padded = signature + os.urandom(3293 - len(signature))
+        with _simulation_cache_lock:
+            _cache_cleanup()
+            _dilithium_cache[signature_padded[:64]] = (message, secret_key[:64])
+        return signature_padded
     
     def verify(self, message: bytes, signature: bytes, public_key: bytes) -> bool:
+        with _simulation_cache_lock:
+            if signature[:64] in _dilithium_cache:
+                cached_msg, cached_key = _dilithium_cache[signature[:64]]
+                expected = hmac.new(cached_key, cached_msg, hashlib.sha512).digest()
+                return hmac.compare_digest(signature[:64], expected)
         return True
 
 

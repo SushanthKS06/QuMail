@@ -4,10 +4,13 @@ import { Send, X, Paperclip } from 'lucide-react'
 import { sendEmail } from '../../api/emails'
 import SecurityLevelSelector from '../Security/SecurityLevelSelector'
 import type { SecurityLevel } from '../../types/email'
+import { useToast } from '../Toast/Toast'
 import './ComposeEmail.css'
 
 export default function ComposeEmail() {
     const navigate = useNavigate()
+    const { addToast } = useToast()
+    const [attachments, setAttachments] = useState<File[]>([])
     const [to, setTo] = useState('')
     const [cc, setCc] = useState('')
     const [subject, setSubject] = useState('')
@@ -15,6 +18,16 @@ export default function ComposeEmail() {
     const [securityLevel, setSecurityLevel] = useState<SecurityLevel>(2)
     const [isSending, setIsSending] = useState(false)
     const [error, setError] = useState<string | null>(null)
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            setAttachments(prev => [...prev, ...Array.from(e.target.files!)])
+        }
+    }
+
+    const removeAttachment = (index: number) => {
+        setAttachments(prev => prev.filter((_, i) => i !== index))
+    }
 
     async function handleSend() {
         if (!to.trim()) {
@@ -25,8 +38,8 @@ export default function ComposeEmail() {
             setError('Please enter a subject')
             return
         }
-        if (!body.trim()) {
-            setError('Please enter a message')
+        if (!body.trim() && attachments.length === 0) {
+            setError('Please enter a message or add attachments')
             return
         }
 
@@ -43,22 +56,28 @@ export default function ComposeEmail() {
                 subject,
                 body,
                 security_level: securityLevel,
+                attachments: attachments as any,
             })
 
             if (result.success) {
+                addToast('Email sent successfully', 'success')
                 navigate('/sent')
             } else {
-                setError(result.error || 'Failed to send email')
+                const errorMessage = result.error || 'Failed to send email'
+                setError(errorMessage)
+                addToast(errorMessage, 'error')
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to send email')
+            const errorMessage = err instanceof Error ? err.message : 'Failed to send email'
+            setError(errorMessage)
+            addToast(errorMessage, 'error')
         } finally {
             setIsSending(false)
         }
     }
 
     function handleDiscard() {
-        if (body.trim() || subject.trim()) {
+        if (body.trim() || subject.trim() || attachments.length > 0) {
             if (!confirm('Discard this email?')) return
         }
         navigate(-1)
@@ -141,11 +160,31 @@ export default function ComposeEmail() {
                     />
                 </div>
 
+                {attachments.length > 0 && (
+                    <div className="attachments-list">
+                        {attachments.map((file, i) => (
+                            <div key={i} className="attachment-chip">
+                                <span className="attachment-name">{file.name}</span>
+                                <span className="attachment-size">({(file.size / 1024).toFixed(1)} KB)</span>
+                                <button onClick={() => removeAttachment(i)} className="remove-attachment">
+                                    <X size={14} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 <div className="form-row attachments-row">
-                    <button className="attach-button">
+                    <label className="attach-button">
                         <Paperclip size={16} />
                         <span>Attach files</span>
-                    </button>
+                        <input
+                            type="file"
+                            multiple
+                            onChange={handleFileSelect}
+                            style={{ display: 'none' }}
+                        />
+                    </label>
                 </div>
             </div>
         </div>

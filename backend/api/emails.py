@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, UploadFile, status, Form, File
 from pydantic import BaseModel, EmailStr, Field
 
 from api.dependencies import TokenDep
@@ -191,52 +191,90 @@ async def get_email(token: TokenDep, message_id: str):
         )
 
 
+from fastapi import Form, File
+
 @router.post("/send", response_model=SendEmailResponse)
 async def send_email_endpoint(
     token: TokenDep,
-    request: SendEmailRequest,
     background_tasks: BackgroundTasks,
+    to: List[str] = Form(...),
+    cc: List[str] = Form([]),
+    subject: str = Form(...),
+    body: str = Form(...),
+    security_level: int = Form(2),
+    attachments: List[UploadFile] = File(None),
 ):
     try:
+        # FastAPI might receive list of strings as specific format depending on frontend
+        # Usually Form parameters for lists might come as `to` or `to[]`. 
+        # For simplicity, we assume frontend sends them correctly or we might need to parse JSON string if complex.
+        # But standard FormData with same key works for simple lists in FastAPI.
+        
+        # If 'to' comes as a single string of comma-separated emails, split it.
+        # Or if frontend appends multiple 'to' fields.
+        # Let's handle list input carefully. If to is ["a,b"], split it.
+        final_to = []
+        for r in to:
+            final_to.extend([e.strip() for e in r.split(',') if e.strip()])
+            
+        final_cc = []
+        for r in cc:
+            final_cc.extend([e.strip() for e in r.split(',') if e.strip()])
+
         validation = await validate_send_request(
-            recipients=request.to + request.cc,
-            security_level=request.security_level,
-            body_size=len(request.body.encode()),
+            recipients=final_to + final_cc,
+            security_level=security_level,
+            body_size=len(body.encode()),
         )
         
         if not validation["valid"]:
             return SendEmailResponse(
                 success=False,
-                security_level_used=request.security_level,
+                security_level_used=security_level,
                 error=validation["error"],
             )
         
-        actual_level = validation.get("adjusted_level", request.security_level)
+        actual_level = validation.get("adjusted_level", security_level)
+        
+        # Process attachments
+        processed_attachments = []
+        if attachments:
+            for file in attachments:
+                content = await file.read()
+                processed_attachments.append({
+                    "filename": file.filename,
+                    "content": content,
+                    "content_type": file.content_type
+                })
         
         if actual_level == 4:
-            encrypted_body = request.body
+            encrypted_body = body
             key_id = None
+            final_attachments = processed_attachments
         else:
             encrypted_result = await encrypt_email(
-                body=request.body,
+                body=body,
                 security_level=actual_level,
-                recipients=request.to,
+                recipients=final_to,
+                attachments=processed_attachments if processed_attachments else None,
             )
             encrypted_body = encrypted_result["ciphertext"]
             key_id = encrypted_result.get("key_id")
+            final_attachments = encrypted_result.get("attachments", processed_attachments)
         
         message_id = await send_email(
-            to=request.to,
-            cc=request.cc,
-            subject=request.subject,
+            to=final_to,
+            cc=final_cc,
+            subject=subject,
             body=encrypted_body,
             security_level=actual_level,
             key_id=key_id,
+            attachments=final_attachments,
         )
         
         logger.info(
-            "Email sent: %s, security_level=%d, key_id=%s",
-            message_id, actual_level, key_id
+            "Email sent: %s, security_level=%d, key_id=%s, attachments=%d",
+            message_id, actual_level, key_id, len(processed_attachments)
         )
         
         return SendEmailResponse(
@@ -250,14 +288,14 @@ async def send_email_endpoint(
         logger.error("Key request failed: %s", e)
         return SendEmailResponse(
             success=False,
-            security_level_used=request.security_level,
+            security_level_used=security_level,
             error=f"Insufficient key material: {e}",
         )
     except Exception as e:
         logger.exception("Failed to send email: %s", e)
         return SendEmailResponse(
             success=False,
-            security_level_used=request.security_level,
+            security_level_used=security_level,
             error=str(e),
         )
 

@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     gmail_client_secret: str = ""
     gmail_redirect_uri: str = "http://127.0.0.1:8000/api/v1/auth/oauth/gmail/callback"
     
+    yahoo_client_id: str = ""
+    yahoo_client_secret: str = ""
+    yahoo_redirect_uri: str = "http://127.0.0.1:8000/api/v1/auth/oauth/yahoo/callback"
+    
     data_dir: Path = Field(default_factory=lambda: Path("./data"))
     db_encryption_key: str = Field(default_factory=lambda: secrets.token_hex(32))
     

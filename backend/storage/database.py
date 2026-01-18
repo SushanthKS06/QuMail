@@ -86,6 +86,14 @@ async def init_database() -> None:
         )
     """)
     
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
     await db.commit()
     logger.info("Database schema initialized")
 
@@ -95,22 +103,24 @@ async def store_oauth_tokens(
     access_token: str,
     refresh_token: Optional[str],
     expires_in: int,
+    provider: str = "gmail",
 ) -> None:
     db = await get_db()
     
     expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
     
     await db.execute("""
-        INSERT INTO accounts (email, access_token, refresh_token, expires_at)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO accounts (email, provider, access_token, refresh_token, expires_at)
+        VALUES (?, ?, ?, ?, ?)
         ON CONFLICT(email) DO UPDATE SET
+            provider = excluded.provider,
             access_token = excluded.access_token,
             refresh_token = COALESCE(excluded.refresh_token, accounts.refresh_token),
             expires_at = excluded.expires_at
-    """, (email, access_token, refresh_token, expires_at.isoformat()))
+    """, (email, provider, access_token, refresh_token, expires_at.isoformat()))
     
     await db.commit()
-    logger.info("Stored OAuth tokens for %s", email)
+    logger.info("Stored OAuth tokens for %s (%s)", email, provider)
 
 
 async def get_oauth_tokens(email: str) -> Optional[Dict[str, Any]]:
@@ -261,5 +271,34 @@ async def log_audit_event(event_type: str, event_data: Dict[str, Any]) -> None:
         "INSERT INTO audit_log (event_type, event_data) VALUES (?, ?)",
         (event_type, json.dumps(event_data))
     )
+    
+    await db.commit()
+
+
+async def get_settings() -> Dict[str, Any]:
+    db = await get_db()
+    cursor = await db.execute("SELECT key, value FROM settings")
+    rows = await cursor.fetchall()
+    
+    settings_dict = {}
+    for row in rows:
+        try:
+            settings_dict[row["key"]] = json.loads(row["value"])
+        except json.JSONDecodeError:
+            settings_dict[row["key"]] = row["value"]
+            
+    return settings_dict
+
+
+async def save_setting(key: str, value: Any) -> None:
+    db = await get_db()
+    
+    await db.execute("""
+        INSERT INTO settings (key, value, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(key) DO UPDATE SET
+            value = excluded.value,
+            updated_at = CURRENT_TIMESTAMP
+    """, (key, json.dumps(value)))
     
     await db.commit()

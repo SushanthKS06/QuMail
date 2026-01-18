@@ -35,7 +35,7 @@ export default function SecurityLevelSelector({ value, onChange }: Props) {
                         disabled={!available}
                         title={`${info.name}\n${info.description}`}
                     >
-                        <span className="level-icon">{info.icon}</span>
+                        {/* <span className="level-icon">{info.icon}</span> */}
                         <span className="level-name">{info.name}</span>
                         {info.quantum_safe && (
                             <span className="quantum-badge">Q-Safe</span>
@@ -46,3 +46,5 @@ export default function SecurityLevelSelector({ value, onChange }: Props) {
         </div>
     )
 }
+
+

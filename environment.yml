@@ -1,0 +1,53 @@
+# QuMail Conda Environment
+# Install with: conda env create -f environment.yml
+# Activate with: conda activate qumail
+
+name: qumail
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  # Python version
+  - python=3.11
+
+  # Build tools (needed for liboqs compilation)
+  - cmake
+  - ninja
+  - git
+
+  # FastAPI stack
+  - fastapi>=0.109.0
+  - uvicorn>=0.27.0
+  - pydantic>=2.5.0
+  - pydantic-settings>=2.1.0
+
+  # Cryptography
+  - cryptography>=42.0.0
+  - pynacl>=1.5.0
+
+  # HTTP client
+  - httpx>=0.26.0
+
+  # Database
+  - aiosqlite>=0.19.0
+  - sqlalchemy>=2.0.0
+
+  # Google Auth
+  - google-auth>=2.25.0
+  - google-auth-oauthlib>=1.2.0
+
+  # Pip dependencies
+  - pip
+  - pip:
+      # PQC - will auto-install liboqs C library
+      - liboqs-python
+      # Other deps
+      - python-jose[cryptography]>=3.3.0
+      - passlib[bcrypt]>=1.7.4
+      - python-multipart>=0.0.6
+      - aiosmtplib>=3.0.0
+      - imapclient>=3.0.0
+      - email-validator>=2.0.0
+      - google-auth-httplib2>=0.2.0
+      - watchfiles>=0.21.0

@@ -1,7 +1,7 @@
 import base64
 import logging
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Dict
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -14,6 +14,7 @@ class KeyRequestBody(BaseModel):
     peer_id: str
     size: int = Field(gt=0, le=1024 * 1024)
     key_type: str = "aes_seed"
+    user_id: str = "default"
 
 
 class KeyResponse(BaseModel):
@@ -23,6 +24,7 @@ class KeyResponse(BaseModel):
     key_type: str
     created_at: str
     expires_at: Optional[str] = None
+    user_id: str = "default"
 
 
 class KeyStatusResponse(BaseModel):
@@ -57,6 +59,7 @@ async def request_key(request: Request, body: KeyRequestBody):
             peer_id=body.peer_id,
             size=body.size,
             key_type=body.key_type,
+            user_id=body.user_id,
         )
         
         logger.info(
@@ -71,6 +74,7 @@ async def request_key(request: Request, body: KeyRequestBody):
             key_type=key_entry.key_type,
             created_at=key_entry.created_at.isoformat(),
             expires_at=key_entry.expires_at.isoformat() if key_entry.expires_at else None,
+            user_id=key_entry.user_id,
         )
         
     except ValueError as e:
@@ -133,6 +137,55 @@ async def consume_key(request: Request, key_id: str):
         success=True,
         consumed_at=datetime.now(timezone.utc).isoformat(),
     )
+
+
+class ExchangeKeyBody(BaseModel):
+    key_id: str
+    key_material_b64: str
+    peer_id: str
+    key_type: str
+    user_id: str = "default"
+    created_at: str
+    expires_at: Optional[str] = None
+
+
+@router.post("/exchange", response_model=Dict[str, bool])
+async def exchange_key(request: Request, body: ExchangeKeyBody):
+    # Verify the shared secret to ensure this comes from a trusted QKD node
+    expected_secret = request.app.state.settings.qkd_link_secret
+    auth_header = request.headers.get("X-QKD-Link-Secret")
+    
+    if not auth_header or auth_header != expected_secret:
+        logger.warning(f"Unauthorized key exchange attempt from {request.client.host}")
+        raise HTTPException(status_code=403, detail="Invalid QKD Link Secret")
+        
+    key_pool = request.app.state.key_pool
+    
+    try:
+        # Import manually to avoid circular imports
+        from core.key_pool import KeyEntry
+        import base64
+        
+        # Create KeyEntry from remote data
+        entry = KeyEntry(
+            key_id=body.key_id,
+            key_material=base64.b64decode(body.key_material_b64),
+            peer_id=body.peer_id, # The sender (e.g., "km-remote")
+            key_type=body.key_type,
+            user_id=body.user_id,
+            created_at=datetime.fromisoformat(body.created_at),
+            expires_at=datetime.fromisoformat(body.expires_at) if body.expires_at else None
+        )
+        
+        # Inject directly into pool
+        key_pool.inject_key(entry)
+        
+        logger.info(f"Received synchronized key {body.key_id} from {body.peer_id}")
+        return {"success": True}
+        
+    except Exception as e:
+        logger.error(f"Failed to process exchanged key: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.delete("/{key_id}")

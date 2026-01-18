@@ -71,46 +71,68 @@ async def send_email(
     
     all_recipients = to + cc
     
-    try:
-        smtp = aiosmtplib.SMTP(
-            hostname=GMAIL_SMTP_HOST,
-            port=GMAIL_SMTP_PORT,
-            start_tls=True,
-        )
-        
-        await smtp.connect()
-        
-        await smtp.auth_plain(from_email, access_token)
-        
-        await smtp.send_message(message, recipients=all_recipients)
-        
-        await smtp.quit()
-        
-        logger.info(
-            "Email sent: %s, to=%s, security_level=%d",
-            message_id, to, security_level
-        )
-        
-        from storage.database import save_sent_email
-        await save_sent_email(
-            message_id=message_id,
-            from_addr=from_email,
-            to_addrs=to,
-            cc_addrs=cc,
-            subject=subject,
-            body=body,
-            security_level=security_level,
-            key_id=key_id,
-        )
-        
-        return message_id
-        
-    except aiosmtplib.SMTPAuthenticationError as e:
-        logger.error("SMTP authentication failed: %s", e)
-        raise ValueError("Email authentication failed. Please re-authenticate.")
-    except Exception as e:
-        logger.exception("Failed to send email: %s", e)
-        raise
+    MAX_RETRIES = 2
+    retry_count = 0
+    
+    while retry_count < MAX_RETRIES:
+        try:
+            smtp = aiosmtplib.SMTP(
+                hostname=GMAIL_SMTP_HOST,
+                port=GMAIL_SMTP_PORT,
+                start_tls=True,
+            )
+            
+            await smtp.connect()
+            
+            # If this is a retry, force token refresh
+            if retry_count > 0:
+                logger.info("Retrying SMTP auth with forced token refresh...")
+                access_token = await get_valid_token(from_email, force_refresh=True)
+            
+            # Generate XOAUTH2 string
+            auth_string = f"user={from_email}\x01auth=Bearer {access_token}\x01\x01"
+            
+            # Use execute_command directly as auth() helper might not handle XOAUTH2 or exist
+            import base64
+            auth_base64 = base64.b64encode(auth_string.encode("utf-8")).decode("ascii")
+            
+            response = await smtp.execute_command(b"AUTH", b"XOAUTH2", auth_base64.encode("ascii"))
+            
+            if response.code != 235:
+                 raise aiosmtplib.SMTPAuthenticationError(response.code, response.message)
+            
+            await smtp.send_message(message, recipients=all_recipients)
+            
+            await smtp.quit()
+            
+            logger.info(
+                "Email sent: %s, to=%s, security_level=%d",
+                message_id, to, security_level
+            )
+            
+            from storage.database import save_sent_email
+            await save_sent_email(
+                message_id=message_id,
+                from_addr=from_email,
+                to_addrs=to,
+                cc_addrs=cc,
+                subject=subject,
+                body=body,
+                security_level=security_level,
+                key_id=key_id,
+            )
+            
+            return message_id
+            
+        except aiosmtplib.SMTPAuthenticationError as e:
+            logger.warning("SMTP authentication failed (attempt %d/%d): %s", retry_count + 1, MAX_RETRIES, e)
+            retry_count += 1
+            if retry_count >= MAX_RETRIES:
+                logger.error("All SMTP auth retries failed.")
+                raise ValueError("Email authentication failed. Please re-authenticate.")
+        except Exception as e:
+            logger.exception("Failed to send email: %s", e)
+            raise
 
 
 async def send_email_raw(
@@ -126,7 +148,17 @@ async def send_email_raw(
     )
     
     await smtp.connect()
-    await smtp.auth_plain(from_email, access_token)
+    
+    # Generate XOAUTH2 string
+    auth_string = f"user={from_email}\x01auth=Bearer {access_token}\x01\x01"
+    
+    import base64
+    auth_base64 = base64.b64encode(auth_string.encode("utf-8")).decode("ascii")
+    
+    response = await smtp.execute_command(b"AUTH", b"XOAUTH2", auth_base64.encode("ascii"))
+    
+    if response.code != 235:
+         raise aiosmtplib.SMTPAuthenticationError(response.code, response.message)
     
     result = await smtp.sendmail(from_email, to_emails, raw_message)
     

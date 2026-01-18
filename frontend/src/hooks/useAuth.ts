@@ -1,24 +1,46 @@
 import { useState, useCallback } from 'react'
-import { getAuthStatus } from '../api/auth'
+import { getAuthStatus, generateToken } from '../api/auth'
 import { setAuthToken } from '../api/client'
 
 interface AuthState {
     isAuthenticated: boolean
     isLoading: boolean
     accounts: { email: string; provider: string }[]
+    error: string | null
 }
+
+const API_SECRET = import.meta.env.VITE_API_SECRET || 'change_this_to_another_random_string'
 
 export function useAuth() {
     const [state, setState] = useState<AuthState>({
         isAuthenticated: false,
         isLoading: true,
         accounts: [],
+        error: null,
     })
 
     const checkAuth = useCallback(async () => {
         try {
-            const demoToken = localStorage.getItem('qumail_token') || 'demo-token'
-            setAuthToken(demoToken)
+            let token = localStorage.getItem('qumail_token')
+
+            if (!token) {
+                try {
+                    const tokenResponse = await generateToken(API_SECRET)
+                    token = tokenResponse.access_token
+                    localStorage.setItem('qumail_token', token)
+                } catch (tokenError) {
+                    console.error('Failed to get API token:', tokenError)
+                    setState({
+                        isAuthenticated: false,
+                        isLoading: false,
+                        accounts: [],
+                        error: 'Failed to authenticate with backend',
+                    })
+                    return
+                }
+            }
+
+            setAuthToken(token)
 
             const status = await getAuthStatus()
 
@@ -26,20 +48,27 @@ export function useAuth() {
                 isAuthenticated: status.authenticated,
                 isLoading: false,
                 accounts: status.accounts,
+                error: null,
             })
         } catch (error) {
             console.error('Auth check failed:', error)
+            localStorage.removeItem('qumail_token')
             setState({
                 isAuthenticated: false,
                 isLoading: false,
                 accounts: [],
+                error: error instanceof Error ? error.message : 'Authentication failed',
             })
         }
     }, [])
 
-    const login = useCallback(async () => {
+    const login = useCallback(async (provider: 'gmail' | 'yahoo' = 'gmail') => {
         try {
-            const response = await fetch('/api/v1/auth/oauth/gmail/init', {
+            const endpoint = provider === 'yahoo'
+                ? '/api/v1/auth/oauth/yahoo/init'
+                : '/api/v1/auth/oauth/gmail/init'
+
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
             })
@@ -61,6 +90,7 @@ export function useAuth() {
             isAuthenticated: false,
             isLoading: false,
             accounts: [],
+            error: null,
         })
     }, [])
 

@@ -1,3 +1,9 @@
+/* ============================================
+   HEADER COMPONENT
+   Dark: Subtle glass with gradient accents
+   Light: Clean white with border
+   ============================================ */
+
 .header {
     display: flex;
     align-items: center;
@@ -5,13 +11,41 @@
     padding: 1rem 1.5rem;
     background: var(--color-bg-secondary);
     border-bottom: 1px solid var(--color-border);
+    transition: all var(--transition-theme);
+    min-height: 64px;
 }
 
+body.theme-dark .header {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+}
+
+body.theme-light .header {
+    background: var(--color-bg-secondary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* ============================================
+   HEADER TITLE
+   ============================================ */
 .header-title {
     font-size: 1.25rem;
     font-weight: 600;
+    color: var(--color-text-primary);
+    letter-spacing: -0.01em;
 }
 
+body.theme-dark .header-title {
+    background: var(--color-accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ============================================
+   HEADER ACTIONS
+   ============================================ */
 .header-actions {
     display: flex;
     align-items: center;
@@ -25,10 +59,11 @@
     width: 36px;
     height: 36px;
     background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
+    border: none;
+    border-radius: var(--radius-md);
     color: var(--color-text-secondary);
-    transition: background-color var(--transition-fast), color var(--transition-fast);
+    transition: all var(--transition-fast);
+    cursor: pointer;
 }
 
 .header-button:hover {
@@ -36,16 +71,29 @@
     color: var(--color-text-primary);
 }
 
+body.theme-dark .header-button:hover {
+    box-shadow: 0 0 12px var(--color-accent-glow);
+    color: var(--color-accent-primary);
+}
+
+/* ============================================
+   USER INFO
+   ============================================ */
 .header-user {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    margin-left: 1rem;
-    padding-left: 1rem;
+    padding-left: 0.75rem;
     border-left: 1px solid var(--color-border);
+    margin-left: 0.5rem;
 }
 
 .user-email {
     font-size: 0.85rem;
     color: var(--color-text-secondary);
+    font-weight: 500;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

@@ -1,3 +1,8 @@
+/* ============================================
+   ERROR BOUNDARY
+   Theme-aware error display
+   ============================================ */
+
 .error-boundary {
     display: flex;
     align-items: center;
@@ -5,48 +10,86 @@
     min-height: 100vh;
     background: var(--color-bg-primary);
     padding: 2rem;
+    transition: background var(--transition-theme);
 }
 
 .error-content {
     text-align: center;
-    max-width: 500px;
+    max-width: 480px;
+    padding: 3rem;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    transition: all var(--transition-theme);
+}
+
+body.theme-dark .error-content {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: 0 0 40px var(--color-error-glow);
+}
+
+body.theme-light .error-content {
+    box-shadow: var(--shadow-xl);
+    border-color: transparent;
 }
 
 .error-icon {
     font-size: 4rem;
     margin-bottom: 1.5rem;
+    filter: grayscale(0);
+}
+
+body.theme-dark .error-icon {
+    filter: drop-shadow(0 0 16px var(--color-error-glow));
 }
 
 .error-content h2 {
     font-size: 1.5rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
     color: var(--color-text-primary);
+}
+
+body.theme-dark .error-content h2 {
+    background: linear-gradient(135deg, var(--color-error) 0%, #ff6b6b 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .error-message {
     color: var(--color-text-secondary);
-    margin-bottom: 1.5rem;
-    line-height: 1.5;
+    margin-bottom: 2rem;
+    line-height: 1.6;
+    font-size: 0.95rem;
 }
 
 .retry-button {
-    padding: 0.75rem 2rem;
+    padding: 0.875rem 2.5rem;
     background: var(--color-accent-gradient);
     border: none;
     border-radius: var(--radius-md);
     color: white;
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 1rem;
     cursor: pointer;
-    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    transition: all var(--transition-fast);
 }
 
 .retry-button:hover {
     transform: translateY(-2px);
-    box-shadow: var(--shadow-glow);
+    box-shadow: var(--shadow-glow-lg);
 }
 
+body.theme-light .retry-button:hover {
+    box-shadow: var(--shadow-md);
+}
+
+/* ============================================
+   ERROR DETAILS
+   ============================================ */
 .error-details {
     margin-top: 2rem;
     text-align: left;
@@ -56,15 +99,23 @@
     cursor: pointer;
     color: var(--color-text-muted);
     font-size: 0.85rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+    transition: color var(--transition-fast);
+}
+
+.error-details summary:hover {
+    color: var(--color-text-secondary);
 }
 
 .error-details pre {
-    background: var(--color-bg-secondary);
+    background: var(--color-bg-tertiary);
     padding: 1rem;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     overflow-x: auto;
     font-size: 0.75rem;
+    font-family: var(--font-mono);
     color: var(--color-error);
     margin-top: 0.5rem;
+    border: 1px solid var(--color-border);
 }

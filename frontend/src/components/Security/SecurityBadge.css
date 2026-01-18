@@ -1,53 +1,101 @@
+/* ============================================
+   SECURITY BADGE
+   Dark: Glowing neon badges
+   Light: Solid colored badges with borders
+   ============================================ */
+
 .security-badge {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: var(--radius-sm);
-    font-weight: 500;
+    padding: 0.375rem 0.625rem;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    transition: all var(--transition-fast);
 }
 
 .security-badge-small {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
 }
 
 .security-badge-medium {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
 }
 
 .security-badge-large {
-    font-size: 0.95rem;
-    padding: 0.375rem 0.75rem;
+    font-size: 0.9rem;
+    padding: 0.5rem 0.875rem;
 }
 
+/* ============================================
+   SECURITY LEVEL STYLES
+   ============================================ */
+
+/* Level 1 - OTP / Q-SAFE */
 .security-level-1 {
-    background: rgba(0, 255, 136, 0.15);
+    background: var(--color-security-1-bg);
     color: var(--color-security-1);
-    border: 1px solid rgba(0, 255, 136, 0.3);
+    border: 1px solid var(--color-security-1);
 }
 
+body.theme-dark .security-level-1 {
+    box-shadow: 0 0 12px var(--color-security-1-glow);
+}
+
+body.theme-light .security-level-1 {
+    border-color: rgba(5, 150, 105, 0.3);
+}
+
+/* Level 2 - AES + QKD */
 .security-level-2 {
-    background: rgba(99, 102, 241, 0.15);
+    background: var(--color-security-2-bg);
     color: var(--color-security-2);
-    border: 1px solid rgba(99, 102, 241, 0.3);
+    border: 1px solid var(--color-security-2);
 }
 
+body.theme-dark .security-level-2 {
+    box-shadow: 0 0 12px var(--color-security-2-glow);
+}
+
+body.theme-light .security-level-2 {
+    border-color: rgba(124, 58, 237, 0.3);
+}
+
+/* Level 3 - PQC */
 .security-level-3 {
-    background: rgba(245, 158, 11, 0.15);
+    background: var(--color-security-3-bg);
     color: var(--color-security-3);
-    border: 1px solid rgba(245, 158, 11, 0.3);
+    border: 1px solid var(--color-security-3);
 }
 
+body.theme-dark .security-level-3 {
+    box-shadow: 0 0 12px var(--color-security-3-glow);
+}
+
+body.theme-light .security-level-3 {
+    border-color: rgba(217, 119, 6, 0.3);
+}
+
+/* Level 4 - No Security */
 .security-level-4 {
-    background: rgba(106, 106, 122, 0.15);
+    background: var(--color-security-4-bg);
     color: var(--color-security-4);
-    border: 1px solid rgba(106, 106, 122, 0.3);
+    border: 1px solid var(--color-security-4);
 }
 
+body.theme-light .security-level-4 {
+    border-color: rgba(156, 163, 175, 0.3);
+}
+
+/* ============================================
+   BADGE ELEMENTS
+   ============================================ */
 .badge-icon {
     font-size: 1em;
 }
 
 .badge-label {
     white-space: nowrap;
+    letter-spacing: 0.02em;
 }

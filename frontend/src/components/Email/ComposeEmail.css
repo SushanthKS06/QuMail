@@ -1,22 +1,41 @@
+/* ============================================
+   COMPOSE EMAIL
+   Dark: Glassmorphic form with glow effects
+   Light: Clean white form with subtle shadows
+   ============================================ */
+
 .compose {
     display: flex;
     flex-direction: column;
     height: 100%;
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto;
-    padding: 1.5rem;
+    padding: 0;
 }
 
+/* ============================================
+   COMPOSE HEADER
+   ============================================ */
 .compose-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 1.5rem;
+    padding: 1.5rem;
+    padding-bottom: 0;
 }
 
 .compose-header h2 {
-    font-size: 1.25rem;
+    font-size: 1.5rem;
     font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+body.theme-dark .compose-header h2 {
+    background: var(--color-accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .compose-actions {
@@ -24,15 +43,19 @@
     gap: 0.75rem;
 }
 
+/* ============================================
+   COMPOSE BUTTONS
+   ============================================ */
 .compose-button {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     padding: 0.625rem 1.25rem;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     font-size: 0.9rem;
-    font-weight: 500;
+    font-weight: 600;
     transition: all var(--transition-fast);
+    cursor: pointer;
 }
 
 .compose-button.discard {
@@ -44,95 +67,254 @@
 .compose-button.discard:hover {
     background: var(--color-bg-hover);
     color: var(--color-text-primary);
+    border-color: var(--color-border-hover);
 }
 
 .compose-button.send {
     background: var(--color-accent-gradient);
     border: none;
     color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.compose-button.send::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.compose-button.send:hover:not(:disabled)::before {
+    left: 100%;
 }
 
 .compose-button.send:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-glow);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow-lg);
+}
+
+body.theme-light .compose-button.send:hover:not(:disabled) {
+    box-shadow: var(--shadow-md);
 }
 
 .compose-button.send:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
 }
 
+/* ============================================
+   ERROR MESSAGE
+   ============================================ */
 .compose-error {
-    padding: 0.75rem 1rem;
-    background: rgba(239, 68, 68, 0.1);
+    padding: 0.875rem 1rem;
+    background: var(--color-error-bg);
     border: 1px solid var(--color-error);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     color: var(--color-error);
-    margin-bottom: 1rem;
+    margin: 0 1.5rem 1rem 1.5rem;
     font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
+body.theme-dark .compose-error {
+    box-shadow: 0 0 16px var(--color-error-glow);
+}
+
+/* ============================================
+   FORM CONTAINER
+   ============================================ */
 .compose-form {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0;
     flex: 1;
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    margin: 0 1.5rem 1.5rem 1.5rem;
+    overflow: hidden;
+    transition: all var(--transition-theme);
 }
 
+body.theme-dark .compose-form {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+}
+
+body.theme-light .compose-form {
+    box-shadow: var(--shadow-md);
+    border-color: transparent;
+}
+
+/* ============================================
+   FORM ROWS
+   ============================================ */
 .form-row {
     display: flex;
     align-items: center;
     gap: 1rem;
+    padding: 0.875rem 1.25rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.form-row:last-child {
+    border-bottom: none;
 }
 
 .form-row label {
     width: 70px;
     flex-shrink: 0;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    font-weight: 500;
     color: var(--color-text-secondary);
 }
 
 .form-row input {
     flex: 1;
+    background: transparent;
+    border: none;
+    padding: 0.5rem 0;
+    color: var(--color-text-primary);
+    font-size: 0.95rem;
 }
 
+.form-row input:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.form-row input::placeholder {
+    color: var(--color-text-muted);
+}
+
+/* Security Row */
 .security-row {
-    padding: 0.75rem 0;
-    border-top: 1px solid var(--color-border);
-    border-bottom: 1px solid var(--color-border);
+    padding: 1rem 1.25rem;
+    background: var(--color-bg-tertiary);
 }
 
+body.theme-dark .security-row {
+    background: rgba(99, 102, 241, 0.05);
+}
+
+body.theme-light .security-row {
+    background: rgba(249, 115, 22, 0.03);
+}
+
+/* Body Row */
 .body-row {
     flex: 1;
     align-items: stretch;
+    padding: 0;
+}
+
+.body-row label {
+    padding: 1rem 0 1rem 1.25rem;
 }
 
 .body-row textarea {
     flex: 1;
     resize: none;
     min-height: 300px;
+    background: transparent;
+    border: none;
+    padding: 1rem 1.25rem;
+    color: var(--color-text-primary);
+    font-size: 0.95rem;
+    line-height: 1.6;
 }
 
+.body-row textarea:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+/* ============================================
+   ATTACHMENTS
+   ============================================ */
 .attachments-row {
-    padding-top: 0.75rem;
+    padding: 1rem 1.25rem;
     border-top: 1px solid var(--color-border);
 }
 
 .attach-button {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.5rem 1rem;
+    padding: 0.625rem 1rem;
     background: transparent;
     border: 1px dashed var(--color-border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     color: var(--color-text-secondary);
     font-size: 0.85rem;
+    font-weight: 500;
     transition: all var(--transition-fast);
+    cursor: pointer;
 }
 
 .attach-button:hover {
     border-style: solid;
-    background: var(--color-bg-tertiary);
+    border-color: var(--color-accent-primary);
+    background: var(--btn-secondary-bg);
+    color: var(--color-accent-primary);
+}
+
+.attachments-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.attachment-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    font-size: 0.85rem;
+    transition: all var(--transition-fast);
+}
+
+.attachment-chip:hover {
+    border-color: var(--color-border-hover);
+}
+
+.attachment-name {
     color: var(--color-text-primary);
+    font-weight: 500;
+}
+
+.attachment-size {
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+}
+
+.remove-attachment {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 2px;
+    border-radius: var(--radius-full);
+    transition: all var(--transition-fast);
+}
+
+.remove-attachment:hover {
+    color: var(--color-error);
+    background: var(--color-error-bg);
 }

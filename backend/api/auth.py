@@ -183,17 +183,138 @@ async def auth_status():
     
     accounts = await get_stored_accounts()
     
+    def detect_provider(email: str) -> str:
+        if "@yahoo" in email.lower():
+            return "yahoo"
+        elif "@gmail" in email.lower() or "@googlemail" in email.lower():
+            return "gmail"
+        return "unknown"
+    
     return {
         "authenticated": len(accounts) > 0,
         "accounts": [
             {
                 "email": acc["email"],
-                "provider": "gmail",
+                "provider": acc.get("provider") or detect_provider(acc["email"]),
                 "connected_at": acc["connected_at"],
             }
             for acc in accounts
         ],
     }
+
+
+@router.post("/oauth/yahoo/init", response_model=OAuthInitResponse)
+async def init_yahoo_oauth() -> OAuthInitResponse:
+    if not settings.yahoo_client_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Yahoo OAuth not configured. Set YAHOO_CLIENT_ID and YAHOO_CLIENT_SECRET.",
+        )
+    
+    state = secrets.token_urlsafe(32)
+    _oauth_states[state] = datetime.now(timezone.utc)
+    
+    _cleanup_expired_states()
+    
+    params = {
+        "client_id": settings.yahoo_client_id,
+        "redirect_uri": settings.yahoo_redirect_uri,
+        "response_type": "code",
+        "scope": "openid mail-r mail-w",
+        "state": state,
+    }
+    
+    auth_url = f"https://api.login.yahoo.com/oauth2/request_auth?{urlencode(params)}"
+    
+    logger.info("Initiated Yahoo OAuth flow")
+    return OAuthInitResponse(auth_url=auth_url, state=state)
+
+
+@router.get("/oauth/yahoo/callback", response_model=OAuthCallbackResponse)
+async def yahoo_oauth_callback(
+    code: Optional[str] = Query(None),
+    state: Optional[str] = Query(None),
+    error: Optional[str] = Query(None),
+) -> OAuthCallbackResponse:
+    if error:
+        logger.warning("Yahoo OAuth error: %s", error)
+        return OAuthCallbackResponse(success=False, error=error)
+    
+    if not code or not state:
+        return OAuthCallbackResponse(
+            success=False,
+            error="Missing code or state parameter",
+        )
+    
+    if state not in _oauth_states:
+        logger.warning("Invalid Yahoo OAuth state received")
+        return OAuthCallbackResponse(
+            success=False,
+            error="Invalid state - possible CSRF attack",
+        )
+    
+    del _oauth_states[state]
+    
+    import httpx
+    import base64
+    
+    try:
+        credentials = base64.b64encode(
+            f"{settings.yahoo_client_id}:{settings.yahoo_client_secret}".encode()
+        ).decode()
+        
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                "https://api.login.yahoo.com/oauth2/get_token",
+                headers={
+                    "Authorization": f"Basic {credentials}",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "redirect_uri": settings.yahoo_redirect_uri,
+                },
+            )
+            
+            if token_response.status_code != 200:
+                logger.error("Yahoo token exchange failed: %s", token_response.text)
+                return OAuthCallbackResponse(
+                    success=False,
+                    error="Failed to exchange authorization code",
+                )
+            
+            tokens = token_response.json()
+            
+            userinfo_response = await client.get(
+                "https://api.login.yahoo.com/openid/v1/userinfo",
+                headers={"Authorization": f"Bearer {tokens['access_token']}"},
+            )
+            
+            if userinfo_response.status_code == 200:
+                userinfo = userinfo_response.json()
+                email = userinfo.get("email")
+            else:
+                email = None
+            
+            from storage.database import store_oauth_tokens
+            await store_oauth_tokens(
+                email=email or "unknown",
+                access_token=tokens["access_token"],
+                refresh_token=tokens.get("refresh_token"),
+                expires_in=tokens.get("expires_in", 3600),
+                provider="yahoo",
+            )
+            
+            logger.info("Yahoo OAuth completed for %s", email)
+            return OAuthCallbackResponse(success=True, email=email)
+            
+    except Exception as e:
+        logger.exception("Yahoo OAuth callback error: %s", e)
+        return OAuthCallbackResponse(
+            success=False,
+            error=str(e),
+        )
 
 
 def _cleanup_expired_states():

@@ -18,21 +18,21 @@ export default function LoginScreen() {
 
                 <div className="login-features">
                     <div className="feature">
-                        <span className="feature-icon">🔐</span>
+                        <span className="feature-icon"></span>
                         <div>
                             <strong>One-Time Pad</strong>
                             <p>Information-theoretic security</p>
                         </div>
                     </div>
                     <div className="feature">
-                        <span className="feature-icon">🛡️</span>
+                        <span className="feature-icon"></span>
                         <div>
                             <strong>Quantum-Aided AES</strong>
                             <p>QKD-derived encryption keys</p>
                         </div>
                     </div>
                     <div className="feature">
-                        <span className="feature-icon">⚛️</span>
+                        <span className="feature-icon"></span>
                         <div>
                             <strong>Post-Quantum Crypto</strong>
                             <p>Future-proof protection</p>
@@ -41,9 +41,13 @@ export default function LoginScreen() {
                 </div>
 
                 <div className="login-actions">
-                    <button className="login-button gmail" onClick={login}>
+                    <button className="login-button gmail" onClick={() => login('gmail')}>
                         <Mail size={20} />
                         <span>Continue with Gmail</span>
+                    </button>
+                    <button className="login-button yahoo" onClick={() => login('yahoo')}>
+                        <Mail size={20} />
+                        <span>Continue with Yahoo Mail</span>
                     </button>
                 </div>
 

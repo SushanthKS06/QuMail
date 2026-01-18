@@ -3,7 +3,11 @@ import { RefreshCw, Settings, LogOut } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import './Header.css'
 
-export default function Header() {
+interface HeaderProps {
+    onSettingsClick?: () => void
+}
+
+export default function Header({ onSettingsClick }: HeaderProps) {
     const location = useLocation()
     const { accounts, logout } = useAuth()
 
@@ -25,7 +29,7 @@ export default function Header() {
                 <button className="header-button" title="Refresh">
                     <RefreshCw size={18} />
                 </button>
-                <button className="header-button" title="Settings">
+                <button className="header-button" title="Settings" onClick={onSettingsClick}>
                     <Settings size={18} />
                 </button>
 
