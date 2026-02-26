@@ -1,95 +1,142 @@
-# QuMail Security Data Flow Diagrams
+# QuMail Security Visual Diagrams
 
-This document outlines the exact data flow between components during the encryption (Sending) and decryption (Receiving) processes for all three QuMail security levels.
+This document contains both Data Flow Diagrams and Use Case Diagrams for the QuMail security architecture.
 
-## Level 1: Quantum Secure OTP
-The purest form of encryption. Data flows straight from the QKD Key Manager directly into a bitwise XOR operation against the plaintext.
+## 1. Use Case Diagrams
 
-### Sender (Encryption) Flow
+Use Case diagrams show the interactions between Actors (users or external systems) and the QuMail system.
+
+### Sender Use Cases
+```mermaid
+flowchart LR
+    %% Actors
+    Sender((Email Sender))
+    Gmail[[Gmail / SMTP Server]]
+    QKD[[Simulated QKD Network]]
+
+    %% System Boundary
+    subgraph QuMail System
+        Compose([Compose Email])
+        SelectLvl([Select Security Level])
+        ReqKey([Request Encryption Key])
+        Encrypt([Encrypt Email Content])
+        PackMIME([Package as Secure MIME])
+        Dispatch([Send via External Mail])
+    end
+
+    %% Relationships
+    Sender --> Compose
+    Sender --> SelectLvl
+    Compose -.->|includes| Encrypt
+    SelectLvl -.->|determines| Encrypt
+    
+    Encrypt -.->|includes| ReqKey
+    ReqKey --> QKD
+    
+    Encrypt -.->|outputs| PackMIME
+    PackMIME -.->|forwards to| Dispatch
+    Dispatch --> Gmail
+    
+    %% Styling
+    style Gmail fill:#2d2d44,stroke:#ff6b6b,color:#fff
+    style QKD fill:#1a1a2e,stroke:#0f3460,color:#fff
+```
+
+### Receiver Use Cases
+```mermaid
+flowchart LR
+    %% Actors
+    Receiver((Email Receiver))
+    IMAP[[Gmail / IMAP Server]]
+    QKD[[Simulated QKD Network]]
+
+    %% System Boundary
+    subgraph QuMail System
+        Fetch([Fetch Emails])
+        ParseMIME([Extract Secure MIME])
+        ReqDecKey([Request Decryption Key])
+        Decrypt([Decrypt & Verify Envelope])
+        View([View Plaintext Email])
+    end
+
+    %% Relationships
+    IMAP --> Fetch
+    Receiver --> View
+    
+    Fetch -.->|triggers| ParseMIME
+    ParseMIME -.->|outputs| Decrypt
+    
+    Decrypt -.->|requires| ReqDecKey
+    ReqDecKey --> QKD
+    
+    Decrypt -.->|provides| View
+    
+    %% Styling
+    style IMAP fill:#2d2d44,stroke:#ff6b6b,color:#fff
+    style QKD fill:#1a1a2e,stroke:#0f3460,color:#fff
+```
+
+---
+
+## 2. Updated Security Data Flow Diagrams
+
+Here are the detailed data flow diagrams (fixed formatting for markdown rendering compatibility).
+
+### Level 1: Quantum Secure OTP
 ```mermaid
 flowchart TD
     %% Components
-    PT[Plaintext Email]
-    KM[Key Manager :8100]
-    API[QuMail Backend API]
-    XOR{XOR Engine ⊕}
-    MIME[MIME Builder]
-    SMTP[SMTP Server]
+    PT["Plaintext Email"]
+    KM["Key Manager (Port 8100)"]
+    API["QuMail Backend API"]
+    XOR{"XOR Engine"}
+    MIME["MIME Builder"]
+    SMTP["SMTP Server"]
     
     %% Data Flow
-    PT -->|1. Raw Text String| API
-    API -->|2. Request OTP bytes = len(text)| KM
-    KM -->|3. Returns: raw_bytes + key_id| API
+    PT -->|"Raw Text String"| API
+    API -->|"Request OTP bytes"| KM
+    KM -->|"Returns: raw_bytes + key_id"| API
     
-    API -->|4. plaintext_bytes| XOR
-    API -->|5. raw_bytes| XOR
+    API -->|"1: plaintext_bytes"| XOR
+    API -->|"2: raw_bytes"| XOR
     
-    XOR -->|6. Ciphertext_bytes| MIME
-    API -->|7. key_id, L1 headers| MIME
+    XOR -->|"Ciphertext_bytes"| MIME
+    API -->|"key_id & L1 headers"| MIME
     
-    MIME -->|8. Base64 JSON Envelope| SMTP
+    MIME -->|"Base64 JSON Envelope"| SMTP
     
     %% Styling
     style XOR fill:#e94560,color:#fff
     style KM fill:#0f3460,color:#fff
 ```
 
-### Receiver (Decryption) Flow
+### Level 2: Quantum-Aided AES
 ```mermaid
 flowchart TD
     %% Components
-    IMAP[IMAP Server]
-    MIME[MIME Parser]
-    API[QuMail Backend API]
-    KM[Key Manager :8100]
-    XOR{XOR Engine ⊕}
-    UI[QuMail Frontend UI]
+    PT["Plaintext Email"]
+    KM["Key Manager"]
+    HKDF{"HKDF Function"}
+    RNG{"OS Randomizer"}
+    AES{"AES-256-GCM Engine"}
+    MIME["MIME Builder"]
+    SMTP["SMTP Server"]
     
     %% Data Flow
-    IMAP -->|1. Base64 JSON Envelope| MIME
-    MIME -->|2. Extracts: key_id| API
-    MIME -->|3. Extracts: Ciphertext_bytes| XOR
+    PT -->|"Raw Text String"| AES
     
-    API -->|4. Request exact key_id| KM
-    KM -->|5. Returns: matching raw_bytes| API
-    API -->|6. raw_bytes| XOR
+    KM -->|"32-byte QKD Seed + key_id"| HKDF
+    HKDF -->|"Derives clean 256-bit Key"| AES
     
-    XOR -->|7. Decoded plaintext_bytes| UI
+    RNG -->|"Generates 12-byte Nonce"| AES
     
-    %% Styling
-    style XOR fill:#e94560,color:#fff
-    style KM fill:#0f3460,color:#fff
-```
-
-## Level 2: Quantum-Aided AES
-The standard mode. Data flows from the Key Manager into an HKDF to derive a clean session key, which is then fed into the AES-GCM block cipher.
-
-### Sender (Encryption) Flow
-```mermaid
-flowchart TD
-    %% Components
-    PT[Plaintext Email]
-    KM[Key Manager]
-    HKDF{HKDF Function}
-    RNG{OS Randomizer}
-    AES{AES-256-GCM Engine}
-    MIME[MIME Builder]
-    SMTP[SMTP Server]
+    AES -->|"Ciphertext"| MIME
+    AES -->|"16-byte Auth Tag"| MIME
+    RNG -->|"Nonce"| MIME
+    KM -->|"key_id"| MIME
     
-    %% Data Flow
-    PT -->|1. Raw Text String| AES
-    
-    KM -->|2. Returns: 32-byte QKD Seed + key_id| HKDF
-    HKDF -->|3. Derives clean 256-bit Key| AES
-    
-    RNG -->|4. Generates 12-byte Nonce| AES
-    
-    AES -->|5. Outputs: Ciphertext| MIME
-    AES -->|6. Outputs: 16-byte Auth Tag| MIME
-    RNG -->|7. Forwards Nonce| MIME
-    KM -->|8. Forwards key_id| MIME
-    
-    MIME -->|9. Packages Envelope| SMTP
+    MIME -->|"Packages Envelope"| SMTP
     
     %% Styling
     style AES fill:#e94560,color:#fff
@@ -97,105 +144,34 @@ flowchart TD
     style KM fill:#0f3460,color:#fff
 ```
 
-### Receiver (Decryption) Flow
+### Level 3: Post-Quantum Crypto (Hybrid)
 ```mermaid
 flowchart TD
     %% Components
-    IMAP[IMAP Server]
-    MIME[MIME Parser]
-    KM[Key Manager]
-    HKDF{HKDF Function}
-    AES{AES-256-GCM Engine}
-    UI[QuMail Frontend UI]
-    ERR[Auth Error Handler]
+    PT["Plaintext Email"]
+    PUB["Alice's Kyber Public Key"]
+    KYB{"Kyber.Encapsulate"}
+    KM["Key Manager"]
+    HKDF{"Hybrid HKDF"}
+    AES{"AES-256-GCM Engine"}
+    MIME["MIME Builder"]
+    SMTP["SMTP Server"]
     
     %% Data Flow
-    IMAP -->|1. Base64 Envelope| MIME
+    PUB -->|"Input to Kyber"| KYB
+    KYB -->|"Generates Shared Secret"| HKDF
+    KYB -->|"Kyber Ciphertext"| MIME
     
-    MIME -->|2. Extracts: key_id| KM
-    KM -->|3. Returns: exact 32-byte QKD Seed| HKDF
-    HKDF -->|4. Rebuilds 256-bit Key| AES
+    KM -->|"32-byte QKD Seed + key_id"| HKDF
     
-    MIME -->|5. Extracts: Ciphertext| AES
-    MIME -->|6. Extracts: Nonce| AES
-    MIME -->|7. Extracts: Auth Tag| AES
+    HKDF -->|"Mixes Secret + Seed -> Ultimate Key"| AES
     
-    AES -->|8a. Tag Verifies -> Plaintext| UI
-    AES -->|8b. Tag Fails -> Abort| ERR
+    PT -->|"Raw Text String"| AES
+    AES -->|"AES Ciphertext + Nonce + Tag"| MIME
     
-    %% Styling
-    style AES fill:#e94560,color:#fff
-    style HKDF fill:#1a1a2e,color:#fff
-    style KM fill:#0f3460,color:#fff
-```
-
-## Level 3: Post-Quantum Crypto (Hybrid)
-The most complex flow. It combines a lattice-based Key Encapsulation Mechanism (Kyber) with QKD material to create a double-layered hybrid key.
-
-### Sender (Encryption) Flow
-```mermaid
-flowchart TD
-    %% Components
-    PT[Plaintext Email]
-    PUB[Alice's Kyber Public Key]
-    KYB{Kyber.Encapsulate}
-    KM[Key Manager]
-    HKDF{Hybrid HKDF}
-    AES{AES-256-GCM Engine}
-    MIME[MIME Builder]
-    SMTP[SMTP Server]
+    KM -->|"qkd_key_id"| MIME
     
-    %% Data Flow
-    PUB -->|1. Input to Kyber| KYB
-    KYB -->|2. Generates Shared Secret| HKDF
-    KYB -->|3. Generates Kyber Ciphertext| MIME
-    
-    KM -->|4. Provides 32-byte QKD Seed + key_id| HKDF
-    
-    HKDF -->|5. Mixes Secret + Seed = Ultimate Key| AES
-    
-    PT -->|6. Raw Text String| AES
-    AES -->|7. Outputs: AES Ciphertext + Nonce + Tag| MIME
-    
-    KM -->|8. Forwards qkd_key_id| MIME
-    
-    MIME -->|9. Packages double-layered Envelope| SMTP
-    
-    %% Styling
-    style KYB fill:#4b1d52,color:#fff
-    style AES fill:#e94560,color:#fff
-    style HKDF fill:#1a1a2e,color:#fff
-    style KM fill:#0f3460,color:#fff
-```
-
-### Receiver (Decryption) Flow
-```mermaid
-flowchart TD
-    %% Components
-    IMAP[IMAP Server]
-    MIME[MIME Parser]
-    PRIV[Alice's Kyber Private Key]
-    KYB{Kyber.Decapsulate}
-    KM[Key Manager]
-    HKDF{Hybrid HKDF}
-    AES{AES-256-GCM Engine}
-    UI[QuMail Frontend UI]
-    
-    %% Data Flow
-    IMAP -->|1. Base64 Envelope| MIME
-    
-    MIME -->|2. Extracts Kyber Ciphertext| KYB
-    PRIV -->|3. Input to solve puzzle| KYB
-    KYB -->|4. Recovers exact Shared Secret| HKDF
-    
-    MIME -->|5. Extracts qkd_key_id| KM
-    KM -->|6. Returns exact 32-byte QKD Seed| HKDF
-    
-    HKDF -->|7. Mixes Secret + Seed = Ultimate Key| AES
-    
-    MIME -->|8. Extracts AES Ciphertext + Nonce + Tag| AES
-    
-    AES -->|9. Tag Verifies -> Plaintext| UI
+    MIME -->|"Double-layered Envelope"| SMTP
     
     %% Styling
     style KYB fill:#4b1d52,color:#fff
