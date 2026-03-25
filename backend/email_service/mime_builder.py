@@ -23,7 +23,7 @@ def build_encrypted_mime(
     message["To"] = ", ".join(to_addrs)
     if cc_addrs:
         message["Cc"] = ", ".join(cc_addrs)
-    message["Subject"] = f"[QuMail Encrypted] {subject}"
+    message["Subject"] = "New Encrypted Message"  # Generic subject to protect metadata
     
     message["X-QuMail-Version"] = "1.0"
     message["X-QuMail-Security-Level"] = str(security_level)
@@ -38,14 +38,41 @@ def build_encrypted_mime(
     }
     message["X-QuMail-Algorithm"] = algorithm_map.get(security_level, "UNKNOWN")
     
+    import json
+    import base64
+    
+    # Create the envelope structure
+    envelope_data = {
+        "subject": subject,  # Actual subject inside encrypted envelope
+        "body": encrypted_body,
+        "version": "1.0",
+        "security_level": security_level,
+    }
+    
+    envelope_json = json.dumps(envelope_data).encode("utf-8")
+    
     envelope = MIMEApplication(
-        encrypted_body.encode("utf-8"),
+        base64.b64encode(envelope_json),  # Base64 encode the JSON envelope
         _subtype="x-qumail-envelope",
         _encoder=lambda x: x,
     )
     envelope.set_charset("utf-8")
     envelope["Content-Transfer-Encoding"] = "base64"
     message.attach(envelope)
+    
+    # Add a visible body with the ciphertext so it is NOT seen as plain text in Gmail
+    body_text = (
+        "-----BEGIN QUMAIL ENCRYPTED MESSAGE-----\n"
+        f"Version: 1.0\n"
+        f"Security-Level: {security_level}\n"
+        f"Algorithm: {algorithm_map.get(security_level, 'UNKNOWN')}\n"
+        f"Key-ID: {key_id if key_id else 'N/A'}\n"
+        "\n"
+        f"{encrypted_body}\n"
+        "-----END QUMAIL ENCRYPTED MESSAGE-----\n\n"
+        "This email is secured by QuMail. Do not alter this content.\n"
+    )
+    message.attach(MIMEText(body_text, "plain", "utf-8"))
     
     if attachments:
         for att in attachments:

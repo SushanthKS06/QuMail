@@ -1,0 +1,71 @@
+# Stage 1: Builder
+FROM python:3.11-slim as builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    libffi-dev \
+    libssl-dev \
+    ninja-build \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build liboqs from source (Critical for PQC)
+WORKDIR /tmp
+RUN git clone --depth 1 --branch main https://github.com/open-quantum-safe/liboqs.git && \
+    mkdir liboqs/build && \
+    cd liboqs/build && \
+    cmake -GNinja -DOQS_USE_OPENSSL=ON .. || cmake -DOQS_USE_OPENSSL=ON .. && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig && \
+    cd ../.. && rm -rf liboqs
+
+WORKDIR /app
+
+COPY requirements.txt .
+# Install into /install for easy copying
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# Stage 2: Final
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Create a non-root user
+RUN useradd -m -u 1000 qumail
+
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy liboqs shared libraries from builder
+COPY --from=builder /usr/local/lib/liboqs* /usr/local/lib/
+COPY --from=builder /usr/local/include/oqs /usr/local/include/oqs
+RUN ldconfig
+
+# Copy installed python packages from builder
+COPY --from=builder /install /usr/local
+
+# Copy application code
+COPY . .
+
+# Set ownership to non-root user
+RUN chown -R qumail:qumail /app
+
+# Switch to non-root user
+USER qumail
+
+# Environment variables
+ENV PYTHONUNBUFFERED=1
+ENV QUMAIL_DEV_MODE=0
+
+# Expose port
+EXPOSE 8000
+
+# Run the application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

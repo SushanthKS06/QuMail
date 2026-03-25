@@ -33,3 +33,23 @@ export async function getSecurityLevels(): Promise<{
 }> {
     return api.get('/security/levels')
 }
+
+export interface TestResult {
+    test_name: string
+    security_level: number
+    success: boolean
+    duration_ms: number
+    message: string
+    details?: Record<string, number>
+}
+
+export interface DiagnosticsResult {
+    overall_success: boolean
+    tests: TestResult[]
+    run_at: string
+    total_duration_ms: number
+}
+
+export async function runDiagnostics(): Promise<DiagnosticsResult> {
+    return api.post<DiagnosticsResult>('/diagnostics/run')
+}

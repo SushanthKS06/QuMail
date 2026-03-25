@@ -53,56 +53,35 @@ A production-grade Windows desktop email client with quantum-secure encryption, 
 
 ##  Quick Start
 
-### Prerequisites
+The recommended way to run QuMail is using Docker for backend services and running the Electron app natively.
 
-- Python 3.11+
-- Node.js 18+
-- Git
+### 1. Start Backend Services (Docker)
 
-### 1. Clone and Setup
+Ensure Docker Desktop is running, then use Docker Compose:
 
 ```bash
 git clone https://github.com/your-repo/qumail.git
 cd qumail
+docker-compose up -d --build
 ```
+*Note: Building takes a few minutes as it compiles post-quantum libraries (`liboqs`) from source.*
 
-### 2. Start the Key Manager
+### 2. Run the Desktop App
 
-```bash
-cd key_manager
-pip install -r requirements.txt
-python main.py
-```
-
-The Key Manager will start on http://127.0.0.1:8100
-
-### 3. Start the Backend
-
-```bash
-cd backend
-pip install -r requirements.txt
-python main.py
-```
-
-The backend will start on http://127.0.0.1:8000
-
-### 4. Start the Frontend (Development)
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-The frontend will be available at http://localhost:5173
-
-### 5. Run the Desktop App (Optional)
+In a new terminal, start the Electron frontend:
 
 ```bash
 cd electron
 npm install
-npm run dev
+# PowerShell
+$env:QUMAIL_USE_DOCKER="1"; npm run dev
+# Bash
+QUMAIL_USE_DOCKER=1 npm run dev
 ```
+
+For detailed setup or troubleshooting, see the [Docker Setup Guide](docs/docker-setup.md).
+
+> **Alternative**: If you want to run everything locally without Docker, you will need to manually start the `key_manager`, `backend`, and `frontend` separately. See our detailed documentation for manual run instructions.
 
 ##  Project Structure
 
@@ -241,6 +220,7 @@ The Key Manager is a **simulation** using cryptographically secure random number
 
 ##  Documentation
 
+- [Docker Setup Guide](docs/docker-setup.md) - Instructions for running with Docker
 - [Architecture](docs/architecture.md) - System design and components
 - [API Reference](docs/api-reference.md) - Complete API documentation
 - [Security Model](docs/security-model.md) - Encryption details and threat model
@@ -276,3 +256,5 @@ MIT License - See [LICENSE](LICENSE) for details.
 - ETSI GS QKD 014 for Key Manager API specification
 - NIST for post-quantum algorithm standards (Kyber, Dilithium)
 - Open Quantum Safe (liboqs) for PQC implementations
+
+

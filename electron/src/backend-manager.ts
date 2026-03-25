@@ -22,6 +22,36 @@ export class ProcessManager {
     }
 
     start() {
+        if (process.env.QUMAIL_USE_DOCKER === '1') {
+            console.log('Docker mode detected. Skipping local service spawning. Connecting to running containers.');
+            // We assume backend is at localhost:8000 and KM at localhost:8001
+            // Frontend is spawned by Electron (this process) usually via loadURL, 
+            // but here 'startFrontend' spawns the 'npm run dev' key... wait.
+            // If in Docker, Frontend is also running in Docker (nginx/port 5173).
+            // But Electron needs to load a URL.
+            // If we are developing Electron, we might want the frontend from Docker too?
+            // Actually, usually in dev we want HMR. 
+            // If we use Docker backend, we still need a frontend to load.
+            // Option A: Load from localhost:5173 (Docker Frontend)
+            // Option B: Spawn local frontend with npm run dev (for HMR) but change its API target?
+
+            // Let's stick to the simplest integration:
+            // "Docker Backend" means: 
+            // 1. Don't spawn Backend (Python)
+            // 2. Don't spawn KeyManager (Python)
+            // 3. DO spawn Frontend (React) LOCALLY if we want HMR, OR just load from Docker if we don't care about frontend changes?
+            // The user asked "how will my electron app opens". 
+            // If they modify frontend code, they probably want local React.
+            // But if they just want to RUN it, connecting to Docker is fine.
+
+            // Let's assume: If QUMAIL_USE_DOCKER=1, we DO NOT spawn backend/KM.
+            // But we SHOULD spawn frontend? No, if we use Docker, we might as well use the Docker frontend.
+            // Wait, Electron `loadURL` in `main.ts` likely points to `http://localhost:5173`.
+            // If Docker is running frontend at 5173, we don't need to spawn it either!
+
+            return;
+        }
+
         if (this.isDev) {
             console.log('Starting services in development mode...');
             this.startBackend();
@@ -69,9 +99,15 @@ export class ProcessManager {
         const scriptPath = path.join(__dirname, '../../backend/main.py');
         const cwd = path.join(__dirname, '../../backend');
 
+        const env = {
+            ...process.env,
+            QUMAIL_DEV_MODE: this.isDev ? '1' : (process.env.QUMAIL_DEV_MODE || '0')
+        };
+
         console.log(`Spawning Backend: ${pythonPath} ${scriptPath}`);
         this.backendProcess = spawn(pythonPath, ['main.py'], {
             cwd,
+            env,
             stdio: 'pipe', // Pipe stdio to log
             shell: true, // Needed for some env vars or path resolution on Windows sometimes
         });
@@ -84,9 +120,15 @@ export class ProcessManager {
         const scriptPath = path.join(__dirname, '../../key_manager/main.py');
         const cwd = path.join(__dirname, '../../key_manager');
 
+        const env = {
+            ...process.env,
+            QUMAIL_DEV_MODE: this.isDev ? '1' : (process.env.QUMAIL_DEV_MODE || '0')
+        };
+
         console.log(`Spawning Key Manager: ${pythonPath} ${scriptPath}`);
         this.keyManagerProcess = spawn(pythonPath, ['main.py'], {
             cwd,
+            env,
             stdio: 'pipe',
             shell: true,
         });

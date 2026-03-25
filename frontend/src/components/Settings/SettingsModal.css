@@ -252,6 +252,15 @@ body.theme-dark .theme-btn.active {
 }
 
 /* ============================================
+   SETTINGS DIVIDER
+   ============================================ */
+.settings-divider {
+    height: 1px;
+    background: var(--color-border);
+    margin: 1.5rem 0;
+}
+
+/* ============================================
    ANIMATIONS
    ============================================ */
 @keyframes fadeIn {

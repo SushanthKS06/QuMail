@@ -11,12 +11,14 @@ from crypto_engine import encrypt_email, decrypt_email
 from email_service import send_email, fetch_emails, get_email_by_id
 from policy_engine import validate_send_request, check_recipient_capability
 from qkd_client import request_key, KeyRequestError
+from utils.sanitizer import sanitize_html
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
 class AttachmentMeta(BaseModel):
+    id: str
     filename: str
     size: int
     content_type: str
@@ -32,6 +34,8 @@ class EmailSummary(BaseModel):
     security_level: int
     has_attachments: bool
     is_read: bool
+    ai_security_score: Optional[float] = 0.0
+    ai_security_reasons: List[str] = []
 
 
 class EmailDetail(BaseModel):
@@ -47,6 +51,8 @@ class EmailDetail(BaseModel):
     security_level: int
     key_id: Optional[str] = None
     decryption_status: str = "success"
+    ai_security_score: Optional[float] = 0.0
+    ai_security_reasons: List[str] = []
 
 
 class SendEmailRequest(BaseModel):
@@ -107,7 +113,24 @@ async def list_emails(
             if decrypt and email.get("encrypted"):
                 try:
                     decrypted = await decrypt_email(email)
+                    # Sanitize HTML content after decryption
+                    if decrypted.get("html_body"):
+                        decrypted["html_body"] = sanitize_html(decrypted["html_body"])
                     email.update(decrypted)
+                    
+                    # AI Sentinel Analysis
+                    try:
+                        from extensions.ai_sentinel import ai_sentinel
+                        analysis = ai_sentinel.analyze_email(
+                            subject=email.get("subject", ""),
+                            body=email.get("body", "") or email.get("preview", ""),
+                            sender=email.get("from", "")
+                        )
+                        email["ai_security_score"] = analysis["score"]
+                        email["ai_security_reasons"] = analysis["reasons"]
+                    except Exception as ai_err:
+                        logger.warning(f"AI Sentinel failed for {email['message_id']}: {ai_err}")
+
                 except Exception as e:
                     logger.warning("Failed to decrypt email %s: %s", email["message_id"], e)
                     email["preview"] = "[Encrypted - Unable to decrypt]"
@@ -122,6 +145,8 @@ async def list_emails(
                 security_level=email.get("security_level", 4),
                 has_attachments=len(email.get("attachments", [])) > 0,
                 is_read=email.get("is_read", False),
+                ai_security_score=email.get("ai_security_score", 0.0),
+                ai_security_reasons=email.get("ai_security_reasons", []),
             ))
         
         return EmailListResponse(
@@ -139,9 +164,9 @@ async def list_emails(
 
 
 @router.get("/{message_id}", response_model=EmailDetail)
-async def get_email(token: TokenDep, message_id: str):
+async def get_email(token: TokenDep, message_id: str, folder: str = Query(default="INBOX")):
     try:
-        email = await get_email_by_id(message_id)
+        email = await get_email_by_id(message_id, folder)
         
         if not email:
             raise HTTPException(
@@ -153,11 +178,30 @@ async def get_email(token: TokenDep, message_id: str):
         if email.get("encrypted"):
             try:
                 decrypted = await decrypt_email(email)
+                # Sanitize HTML content after decryption
+                if decrypted.get("html_body"):
+                    decrypted["html_body"] = sanitize_html(decrypted["html_body"])
                 email.update(decrypted)
             except Exception as e:
                 logger.warning("Decryption failed for %s: %s", message_id, e)
                 email["body"] = "[Encrypted - Unable to decrypt]"
                 decryption_status = f"failed: {str(e)}"
+        elif email.get("html_body"):
+            # Sanitize unencrypted HTML too
+            email["html_body"] = sanitize_html(email["html_body"])
+        
+        # AI Sentinel Analysis (Detail View)
+        try:
+            from extensions.ai_sentinel import ai_sentinel
+            analysis = ai_sentinel.analyze_email(
+                subject=email.get("subject", ""),
+                body=email.get("body", "") or email.get("preview", ""),
+                sender=email.get("from", "")
+            )
+            email["ai_security_score"] = analysis["score"]
+            email["ai_security_reasons"] = analysis["reasons"]
+        except Exception as ai_err:
+            logger.warning(f"AI Sentinel failed for {message_id}: {ai_err}")
         
         return EmailDetail(
             message_id=email["message_id"],
@@ -169,16 +213,19 @@ async def get_email(token: TokenDep, message_id: str):
             html_body=email.get("html_body"),
             attachments=[
                 AttachmentMeta(
+                    id=att.get("id", str(i)),
                     filename=att["filename"],
                     size=att["size"],
                     content_type=att["content_type"],
                 )
-                for att in email.get("attachments", [])
+                for i, att in enumerate(email.get("attachments", []))
             ],
             received_at=email["received_at"],
             security_level=email.get("security_level", 4),
             key_id=email.get("key_id"),
             decryption_status=decryption_status,
+            ai_security_score=email.get("ai_security_score", 0.0),
+            ai_security_reasons=email.get("ai_security_reasons", []),
         )
         
     except HTTPException:

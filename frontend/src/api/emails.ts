@@ -2,7 +2,13 @@ import { api } from './client'
 import type { Email } from '../types/email'
 import type { SendEmailRequest, SendEmailResponse } from '../types/api'
 
+// Extended interface to handle the file objects in the component
+export interface SendEmailForm extends Omit<SendEmailRequest, 'attachments'> {
+    attachments: File[]
+}
+
 export interface EmailListResponse {
+
     emails: Email[]
     total: number
     has_more: boolean
@@ -18,49 +24,29 @@ export async function fetchEmails(
     )
 }
 
-export async function getEmail(messageId: string): Promise<Email> {
-    return api.get<Email>(`/emails/${messageId}`)
+export async function getEmail(messageId: string, folder: string = 'INBOX'): Promise<Email> {
+    return api.get<Email>(`/emails/${messageId}?folder=${folder}`)
 }
 
-export async function sendEmail(request: SendEmailRequest): Promise<SendEmailResponse> {
-    if (request.attachments && request.attachments.length > 0) {
-        const formData = new FormData()
-        // Append all text fields
-        request.to.forEach(email => formData.append('to', email))
-        if (request.cc) request.cc.forEach(email => formData.append('cc', email))
-        formData.append('subject', request.subject)
-        formData.append('body', request.body)
-        formData.append('security_level', request.security_level.toString())
-
-        // Append files
-        // Note: attachments in request logic might be File objects, but the interface definition 
-        // needs to be compatible. If 'attachments' in SendEmailRequest is string[], we need to fix the type too.
-        // Assuming we pass 'File[]' from the component, we might need a separate interface or override.
-        // Let's cast to any for the implementation or update the type definition.
-
-        // We will assume the component passes { ...request, attachments: File[] } 
-        // effectively ignoring the strict type for a moment or we update the type.
-
-        const files = request.attachments as unknown as File[]
-        files.forEach(file => {
-            formData.append('attachments', file)
-        })
-
-        return api.post<SendEmailResponse>('/emails/send', formData)
-    }
-
-    // Fallback for no attachments (old behavior, but backend now expects Form or similar)
-    // Actually backend `emails_endpoint` now expects Form data for fields even without attachments.
-    // So we should ALWAYS use FormData or x-www-form-urlencoded if we want to be consistent 
-    // with the backend change I made (Form(...) parameters).
-    // Let's switch to FormData for all requests to this endpoint.
-
+export async function sendEmail(request: SendEmailForm): Promise<SendEmailResponse> {
     const formData = new FormData()
+
+    // Append array fields
+    // Backend expects 'to', 'cc' as repeated fields or comma-separated strings.
+    // Standard FormData append repeats the key for arrays.
     request.to.forEach(email => formData.append('to', email))
     if (request.cc) request.cc.forEach(email => formData.append('cc', email))
+
     formData.append('subject', request.subject)
     formData.append('body', request.body)
     formData.append('security_level', request.security_level.toString())
+
+    // Append files
+    if (request.attachments && request.attachments.length > 0) {
+        request.attachments.forEach(file => {
+            formData.append('attachments', file)
+        })
+    }
 
     return api.post<SendEmailResponse>('/emails/send', formData)
 }
@@ -71,4 +57,29 @@ export async function deleteEmail(messageId: string): Promise<{ success: boolean
 
 export async function saveDraft(request: SendEmailRequest): Promise<{ draft_id: string }> {
     return api.post<{ draft_id: string }>('/emails/draft', request)
+}
+
+export async function downloadAttachment(
+    messageId: string,
+    attachmentId: string,
+    filename: string
+): Promise<void> {
+    const token = (await import('./client')).getAuthToken()
+    const response = await fetch(`/api/v1/emails/${messageId}/attachment/${attachmentId}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+    })
+
+    if (!response.ok) {
+        throw new Error('Failed to download attachment')
+    }
+
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
 }

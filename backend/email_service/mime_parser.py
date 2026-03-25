@@ -32,9 +32,15 @@ def parse_qumail_message(msg: Message) -> Dict[str, Any]:
                     
                     try:
                         envelope = json.loads(base64.b64decode(payload))
+                        
+                        # Extract inner content
+                        if "body" in envelope:
+                            result["encrypted_body"] = envelope["body"]
+                        
+                        # Extract metadata including protected subject
                         result["metadata"].update({
                             k: v for k, v in envelope.items()
-                            if k not in ("ciphertext",)
+                            if k not in ("body",)
                         })
                     except:
                         pass

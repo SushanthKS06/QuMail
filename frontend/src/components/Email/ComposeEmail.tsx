@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Send, X, Paperclip } from 'lucide-react'
 import { sendEmail } from '../../api/emails'
+import type { SendEmailForm } from '../../api/emails'
 import SecurityLevelSelector from '../Security/SecurityLevelSelector'
 import type { SecurityLevel } from '../../types/email'
 import { useToast } from '../Toast/Toast'
@@ -50,14 +51,16 @@ export default function ComposeEmail() {
             const toAddresses = to.split(',').map(e => e.trim()).filter(Boolean)
             const ccAddresses = cc ? cc.split(',').map(e => e.trim()).filter(Boolean) : []
 
-            const result = await sendEmail({
+            const request: SendEmailForm = {
                 to: toAddresses,
                 cc: ccAddresses,
                 subject,
                 body,
                 security_level: securityLevel,
-                attachments: attachments as any,
-            })
+                attachments: attachments,
+            }
+
+            const result = await sendEmail(request)
 
             if (result.success) {
                 addToast('Email sent successfully', 'success')
@@ -88,6 +91,16 @@ export default function ComposeEmail() {
             <div className="compose-header">
                 <h2>New Message</h2>
                 <div className="compose-actions">
+                    <label className="compose-button attach">
+                        <Paperclip size={18} />
+                        <span>Attach</span>
+                        <input
+                            type="file"
+                            multiple
+                            onChange={handleFileSelect}
+                            style={{ display: 'none' }}
+                        />
+                    </label>
                     <button
                         className="compose-button discard"
                         onClick={handleDiscard}

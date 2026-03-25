@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Inbox, Send, FileEdit, PenSquare, Shield } from 'lucide-react'
+import { Inbox, Send, FileEdit, PenSquare, Shield, MessageSquare } from 'lucide-react'
 import { useSecurityStatus } from '../../hooks/useSecurityStatus'
 import './Sidebar.css'
 
@@ -37,6 +37,10 @@ export default function Sidebar() {
                 <NavLink to="/drafts" className="nav-item">
                     <FileEdit size={18} />
                     <span>Drafts</span>
+                </NavLink>
+                <NavLink to="/chat" className="nav-item">
+                    <MessageSquare size={18} />
+                    <span>Chat</span>
                 </NavLink>
             </nav>
 

@@ -25,16 +25,30 @@ function createWindow(): void {
         show: false,
     });
 
-    // Wait slightly for services to spin up, or just load and let retry
-    // Ideally we'd poll, but for dev, a simple load is usually fine as Vite HMR connects later
-    // or we refresh.
-    // Let's add a small delay or retry logic?
-    // Actually Vite takes a bit.
+    const FRONTEND_URL = 'http://localhost:5174';
 
-    // We'll try loading immediately, Vite might show "connecting..." 
-    setTimeout(() => {
-        mainWindow?.loadURL('http://localhost:5173');
-    }, 3000); // 3 second delay to let Vite start
+    const loadFrontend = (retries = 3) => {
+        mainWindow?.loadURL(FRONTEND_URL).catch((err) => {
+            console.error(`Failed to load frontend: ${err.message}`);
+            if (retries > 0) {
+                console.log(`Retrying in 2 seconds... (${retries} attempts left)`);
+                setTimeout(() => loadFrontend(retries - 1), 2000);
+            }
+        });
+    };
+
+    // Handle navigation failures (e.g., after OAuth redirect)
+    mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+        console.error(`Navigation failed: ${errorDescription} (${errorCode}) for ${validatedURL}`);
+        // If it failed to load the frontend URL, retry
+        if (validatedURL.startsWith(FRONTEND_URL) || validatedURL.includes('localhost:5173')) {
+            console.log('Retrying frontend load after navigation failure...');
+            setTimeout(() => loadFrontend(2), 1500);
+        }
+    });
+
+    // Wait for services to spin up
+    setTimeout(() => loadFrontend(), 3000);
 
     mainWindow.once('ready-to-show', () => {
         mainWindow?.show();

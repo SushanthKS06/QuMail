@@ -10,7 +10,8 @@ sys.path.insert(0, str(backend_path))
 
 os.environ.setdefault("QUMAIL_SECRET_KEY", "test-secret-key-for-testing-only")
 os.environ.setdefault("QUMAIL_API_TOKEN", "test-api-token")
-os.environ.setdefault("KM_URL", "http://127.0.0.1:8100")
+os.environ.setdefault("KM_URL", "http://127.0.0.1:8200")
+os.environ["QUMAIL_DEV_MODE"] = "1"
 
 
 @pytest.fixture(scope="session")

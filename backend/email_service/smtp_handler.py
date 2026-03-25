@@ -15,8 +15,7 @@ from .mime_builder import build_encrypted_mime
 
 logger = logging.getLogger(__name__)
 
-GMAIL_SMTP_HOST = "smtp.gmail.com"
-GMAIL_SMTP_PORT = 587
+logger = logging.getLogger(__name__)
 
 
 async def send_email(
@@ -77,8 +76,8 @@ async def send_email(
     while retry_count < MAX_RETRIES:
         try:
             smtp = aiosmtplib.SMTP(
-                hostname=GMAIL_SMTP_HOST,
-                port=GMAIL_SMTP_PORT,
+                hostname=settings.smtp_host,
+                port=settings.smtp_port,
                 start_tls=True,
             )
             
@@ -142,8 +141,8 @@ async def send_email_raw(
     access_token: str,
 ) -> str:
     smtp = aiosmtplib.SMTP(
-        hostname=GMAIL_SMTP_HOST,
-        port=GMAIL_SMTP_PORT,
+        hostname=settings.smtp_host,
+        port=settings.smtp_port,
         start_tls=True,
     )
     

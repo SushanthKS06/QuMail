@@ -8,8 +8,17 @@ from .aes_gcm import aes_encrypt, aes_decrypt
 from .pqc import pqc_encrypt, pqc_decrypt
 from .key_derivation import derive_key
 from .secure_random import secure_random_bytes
+from .integrity import compute_hash, create_integrity_envelope, verify_integrity_envelope
 
 logger = logging.getLogger(__name__)
+
+# Lazy import for audit logger to avoid circular imports
+def _get_audit_logger():
+    try:
+        from utils.audit_logger import audit_log
+        return audit_log
+    except ImportError:
+        return None
 
 
 async def encrypt_email(
@@ -18,12 +27,23 @@ async def encrypt_email(
     recipients: List[str],
     attachments: Optional[List[dict]] = None,
 ) -> Dict[str, Any]:
+    audit = _get_audit_logger()
+    
     if security_level == 4:
         return {
             "ciphertext": body,
             "key_id": None,
             "metadata": {"security_level": 4},
         }
+    
+    # 0. Compute integrity hash of plaintext BEFORE encryption
+    body_bytes = body.encode('utf-8')
+    plaintext_hash = compute_hash(body_bytes)
+    integrity_envelope = create_integrity_envelope(body_bytes)
+    
+    if audit:
+        audit.log_event("ENCRYPT_START", security_level=security_level,
+                        data_size=len(body_bytes), hash_prefix=plaintext_hash[:12])
     
     # 1. Encrypt Body & Establish Session Context
     session_key = None
@@ -36,6 +56,10 @@ async def encrypt_email(
         result, session_key = await _encrypt_pqc(body, recipients)
     else:
         raise ValueError(f"Invalid security level: {security_level}")
+    
+    # Embed integrity hash in metadata
+    result["metadata"]["integrity"] = integrity_envelope
+    result["metadata"]["plaintext_hash"] = plaintext_hash
     
     # 2. Encrypt Attachments using Session Context or New OTP
     if attachments:
@@ -53,10 +77,16 @@ async def encrypt_email(
             })
         result["attachments"] = encrypted_attachments
     
+    if audit:
+        audit.log_event("ENCRYPT_COMPLETE", security_level=security_level,
+                        key_id=result.get("key_id", "")[:8] if result.get("key_id") else "",
+                        hash_prefix=plaintext_hash[:12])
+    
     return result
 
 
 async def decrypt_email(email: Dict[str, Any]) -> Dict[str, Any]:
+    audit = _get_audit_logger()
     security_level = email.get("security_level", 4)
     
     if security_level == 4:
@@ -65,6 +95,10 @@ async def decrypt_email(email: Dict[str, Any]) -> Dict[str, Any]:
     encrypted_body = email.get("encrypted_body") or email.get("body", "")
     key_id = email.get("key_id")
     metadata = email.get("encryption_metadata", {})
+    
+    if audit:
+        audit.log_event("DECRYPT_START", security_level=security_level,
+                        key_id=key_id[:8] if key_id else "")
     
     # Decrypt body and recover session key if applicable
     session_key = None
@@ -79,9 +113,29 @@ async def decrypt_email(email: Dict[str, Any]) -> Dict[str, Any]:
     else:
         raise ValueError(f"Invalid security level: {security_level}")
     
+    # Verify integrity hash after decryption
+    integrity_data = metadata.get("integrity", {})
+    decrypted_hash = compute_hash(plaintext.encode('utf-8'))
+    integrity_verified = True
+    
+    if integrity_data:
+        integrity_verified = verify_integrity_envelope(
+            plaintext.encode('utf-8'), integrity_data
+        )
+        if audit:
+            event = "INTEGRITY_CHECK_PASS" if integrity_verified else "INTEGRITY_CHECK_FAIL"
+            audit.log_event(event, security_level=security_level,
+                            hash_prefix=decrypted_hash[:12])
+    
+    if audit:
+        audit.log_event("DECRYPT_COMPLETE", security_level=security_level,
+                        hash_prefix=decrypted_hash[:12])
+    
     return {
         "body": plaintext,
         "preview": plaintext[:200] if plaintext else "",
+        "integrity_verified": integrity_verified,
+        "decrypted_hash": decrypted_hash,
     }
 
 
@@ -133,13 +187,13 @@ async def _encrypt_otp(body: str, recipients: List[str]) -> Tuple[Dict[str, Any]
         key_type="otp",
     )
     
-    ciphertext = otp_encrypt(body_bytes, key_response["key_material"])
+    ciphertext = otp_encrypt(body_bytes, key_response.key_material)
     
     metadata = {
         "version": "1.0",
         "security_level": 1,
         "algorithm": "OTP-XOR",
-        "key_id": key_response["key_id"],
+        "key_id": key_response.key_id,
         "body_length": key_size,
     }
     
@@ -150,7 +204,7 @@ async def _encrypt_otp(body: str, recipients: List[str]) -> Tuple[Dict[str, Any]
     
     return {
         "ciphertext": base64.b64encode(json.dumps(envelope).encode()).decode('ascii'),
-        "key_id": key_response["key_id"],
+        "key_id": key_response.key_id,
         "metadata": metadata,
     }, None
 
@@ -161,17 +215,22 @@ async def _encrypt_aes(body: str, recipients: List[str]) -> Tuple[Dict[str, Any]
     recipient_keys = {}
     primary_key_response = None
     
+    logger.info("requesting keys for recipients: %s", recipients)
     for recipient in recipients:
+        logger.info("requesting key for %s", recipient)
         key_response = await request_key(
             peer_id=recipient,
             size=32,
             key_type="aes_seed",
         )
-        recipient_keys[recipient] = key_response["key_id"]
+        logger.info("received key response for %s", recipient)
+        recipient_keys[recipient] = key_response.key_id
         if primary_key_response is None:
             primary_key_response = key_response
     
-    aes_key = derive_key(primary_key_response["key_material"], b"qumail-aes-encryption", 32)
+    logger.info("deriving key")
+    aes_key = derive_key(primary_key_response.key_material, b"qumail-aes-encryption", 32)
+    logger.info("key derived")
     
     ciphertext, nonce, tag = aes_encrypt(body.encode('utf-8'), aes_key)
     
@@ -179,7 +238,7 @@ async def _encrypt_aes(body: str, recipients: List[str]) -> Tuple[Dict[str, Any]
         "version": "1.0",
         "security_level": 2,
         "algorithm": "AES-256-GCM",
-        "key_id": primary_key_response["key_id"],
+        "key_id": primary_key_response.key_id,
         "recipient_key_ids": recipient_keys,
     }
     
@@ -192,7 +251,7 @@ async def _encrypt_aes(body: str, recipients: List[str]) -> Tuple[Dict[str, Any]
     
     return {
         "ciphertext": base64.b64encode(json.dumps(envelope).encode()).decode('ascii'),
-        "key_id": primary_key_response["key_id"],
+        "key_id": primary_key_response.key_id,
         "metadata": metadata,
     }, aes_key
 
@@ -200,11 +259,13 @@ async def _encrypt_aes(body: str, recipients: List[str]) -> Tuple[Dict[str, Any]
 async def _encrypt_pqc(body: str, recipients: List[str]) -> Tuple[Dict[str, Any], bytes]:
     from qkd_client import request_key
     from storage.database import get_known_recipient
-    from .pqc import dilithium_sign, generate_dilithium_keypair
-    from key_store import get_private_key, store_private_key
+    from .pqc import dilithium_sign, generate_dilithium_keypair, pqc_encrypt
+    from key_store import get_private_key, store_private_key, get_public_key
     
     recipient = await get_known_recipient(recipients[0])
     recipient_public_key = recipient.get("public_key") if recipient else None
+    
+    sender_pub_key = await get_public_key("pqc")
     
     ciphertext_dummy, encapsulated_key, shared_secret = pqc_encrypt(
         body.encode('utf-8'), # Input ignored by pqc_encrypt, it returns session keys
@@ -220,12 +281,12 @@ async def _encrypt_pqc(body: str, recipients: List[str]) -> Tuple[Dict[str, Any]
             size=32,
             key_type="aes_seed",
         )
-        recipient_keys[r] = key_response["key_id"]
+        recipient_keys[r] = key_response.key_id
         if primary_key_response is None:
             primary_key_response = key_response
     
     combined_key = derive_key(
-        shared_secret + primary_key_response["key_material"],
+        shared_secret + primary_key_response.key_material,
         b"qumail-pqc-hybrid",
         32,
     )
@@ -247,7 +308,7 @@ async def _encrypt_pqc(body: str, recipients: List[str]) -> Tuple[Dict[str, Any]
         "version": "1.0",
         "security_level": 3,
         "algorithm": "KYBER-768-DILITHIUM3-AES-256-GCM",
-        "key_id": primary_key_response["key_id"],
+        "key_id": primary_key_response.key_id,
         "recipient_key_ids": recipient_keys,
         "signed": True,
     }
@@ -261,9 +322,15 @@ async def _encrypt_pqc(body: str, recipients: List[str]) -> Tuple[Dict[str, Any]
         "signature": base64.b64encode(signature).decode('ascii'),
     }
     
+    if sender_pub_key:
+        _, sender_encap, sender_ss = pqc_encrypt(b"", sender_pub_key)
+        enc_ck, ck_nonce, ck_tag = aes_encrypt(combined_key, sender_ss)
+        envelope["sender_encap"] = base64.b64encode(sender_encap).decode('ascii')
+        envelope["sender_enc_ck"] = base64.b64encode(ck_nonce + ck_tag + enc_ck).decode('ascii')
+    
     return {
         "ciphertext": base64.b64encode(json.dumps(envelope).encode()).decode('ascii'),
-        "key_id": primary_key_response["key_id"],
+        "key_id": primary_key_response.key_id,
         "metadata": metadata,
     }, combined_key
 
@@ -287,11 +354,11 @@ async def _encrypt_attachment(
             size=key_size,
             key_type="otp",
         )
-        ciphertext = otp_encrypt(content, key_response["key_material"])
+        ciphertext = otp_encrypt(content, key_response.key_material)
         envelope = {
             "version": "1.0",
             "security_level": 1,
-            "key_id": key_response["key_id"],
+            "key_id": key_response.key_id,
             "ciphertext": base64.b64encode(ciphertext).decode('ascii')
         }
         return base64.b64encode(json.dumps(envelope).encode())
@@ -300,13 +367,13 @@ async def _encrypt_attachment(
         # AES: Independent Encryption (new nonce/tag) with NEW key for statelessness
         from qkd_client import request_key
         key_response = await request_key(recipients[0], 32, "aes_seed")
-        aes_key = derive_key(key_response["key_material"], b"qumail-attachment", 32)
+        aes_key = derive_key(key_response.key_material, b"qumail-attachment", 32)
         ciphertext, nonce, tag = aes_encrypt(content, aes_key)
         
         envelope = {
             "version": "1.0",
             "security_level": 2,
-            "key_id": key_response["key_id"],
+            "key_id": key_response.key_id,
             "nonce": base64.b64encode(nonce).decode('ascii'),
             "tag": base64.b64encode(tag).decode('ascii'),
             "ciphertext": base64.b64encode(ciphertext).decode('ascii')
@@ -318,26 +385,34 @@ async def _encrypt_attachment(
         from qkd_client import request_key
         from storage.database import get_known_recipient
         from .pqc import pqc_encrypt
+        from key_store import get_public_key
         
         recipient = await get_known_recipient(recipients[0])
         pub_key = recipient.get("public_key") if recipient else None
+        sender_pub_key = await get_public_key("pqc")
         
         _, encapsulated_key, shared_secret = pqc_encrypt(b"", pub_key)
         key_response = await request_key(recipients[0], 32, "aes_seed")
         
-        combined_key = derive_key(shared_secret + key_response["key_material"], b"qumail-pqc-hybrid", 32)
+        combined_key = derive_key(shared_secret + key_response.key_material, b"qumail-pqc-hybrid", 32)
         
         ciphertext, nonce, tag = aes_encrypt(content, combined_key)
         
         envelope = {
             "version": "1.0",
             "security_level": 3,
-            "key_id": key_response["key_id"],
+            "key_id": key_response.key_id,
             "encapsulated_key": base64.b64encode(encapsulated_key).decode('ascii'),
             "nonce": base64.b64encode(nonce).decode('ascii'),
             "tag": base64.b64encode(tag).decode('ascii'),
             "ciphertext": base64.b64encode(ciphertext).decode('ascii')
         }
+        
+        if sender_pub_key:
+            _, sender_encap, sender_ss = pqc_encrypt(b"", sender_pub_key)
+            enc_ck, ck_nonce, ck_tag = aes_encrypt(combined_key, sender_ss)
+            envelope["sender_encap"] = base64.b64encode(sender_encap).decode('ascii')
+            envelope["sender_enc_ck"] = base64.b64encode(ck_nonce + ck_tag + enc_ck).decode('ascii')
         return base64.b64encode(json.dumps(envelope).encode())
 
     return content
@@ -357,7 +432,7 @@ async def _decrypt_otp(ciphertext_b64: str, key_id: str, metadata: dict) -> Tupl
     ct_bytes = base64.b64decode(envelope["ciphertext"])
     
     key_response = await get_key(actual_key_id)
-    plaintext_bytes = otp_decrypt(ct_bytes, key_response["key_material"])
+    plaintext_bytes = otp_decrypt(ct_bytes, key_response.key_material)
     
     try:
         await consume_key(actual_key_id)
@@ -376,7 +451,7 @@ async def _decrypt_aes(ciphertext_b64: str, key_id: str, metadata: dict) -> Tupl
     actual_key_id = envelope.get("key_id", key_id)
     key_response = await get_key(actual_key_id)
     
-    aes_key = derive_key(key_response["key_material"], b"qumail-aes-encryption", 32)
+    aes_key = derive_key(key_response.key_material, b"qumail-aes-encryption", 32)
     
     nonce = base64.b64decode(envelope["nonce"])
     tag = base64.b64decode(envelope["tag"])
@@ -422,7 +497,7 @@ async def _decrypt_pqc(ciphertext_b64: str, key_id: str, metadata: dict, sender:
     
     key_response = await get_key(target_key_id)
     combined_key = derive_key(
-        shared_secret + key_response["key_material"],
+        shared_secret + key_response.key_material,
         b"qumail-pqc-hybrid",
         32,
     )
@@ -431,7 +506,24 @@ async def _decrypt_pqc(ciphertext_b64: str, key_id: str, metadata: dict, sender:
     tag = base64.b64decode(envelope["tag"])
     ciphertext = base64.b64decode(envelope["ciphertext"])
     
-    plaintext_bytes = aes_decrypt(ciphertext, combined_key, nonce, tag)
+    try:
+        plaintext_bytes = aes_decrypt(ciphertext, combined_key, nonce, tag)
+    except Exception as e:
+        if "sender_encap" in envelope and "sender_enc_ck" in envelope:
+            sender_encap = base64.b64decode(envelope["sender_encap"])
+            sender_enc_ck_full = base64.b64decode(envelope["sender_enc_ck"])
+            ck_nonce = sender_enc_ck_full[:12]
+            ck_tag = sender_enc_ck_full[12:28]
+            enc_ck = sender_enc_ck_full[28:]
+            
+            sender_ss = pqc_decrypt(sender_encap, private_key)
+            try:
+                combined_key = aes_decrypt(enc_ck, sender_ss, ck_nonce, ck_tag)
+                plaintext_bytes = aes_decrypt(ciphertext, combined_key, nonce, tag)
+            except Exception:
+                raise e
+        else:
+            raise e
     
     return plaintext_bytes.decode('utf-8', errors='replace'), combined_key
 
@@ -443,7 +535,7 @@ async def _decrypt_otp_bytes(envelope: Dict[str, Any], key_id: str) -> bytes:
     target_key_id = envelope.get("key_id", key_id)
     
     key_response = await get_key(target_key_id)
-    return otp_decrypt(ciphertext, key_response["key_material"])
+    return otp_decrypt(ciphertext, key_response.key_material)
 
 
 async def _decrypt_aes_bytes(envelope: Dict[str, Any], key_id: str) -> bytes:
@@ -451,7 +543,7 @@ async def _decrypt_aes_bytes(envelope: Dict[str, Any], key_id: str) -> bytes:
     
     target_key_id = envelope.get("key_id", key_id)
     key_response = await get_key(target_key_id)
-    aes_key = derive_key(key_response["key_material"], b"qumail-attachment", 32)
+    aes_key = derive_key(key_response.key_material, b"qumail-attachment", 32)
     
     nonce = base64.b64decode(envelope["nonce"])
     tag = base64.b64decode(envelope["tag"])
@@ -473,7 +565,7 @@ async def _decrypt_pqc_bytes(envelope: Dict[str, Any], key_id: str) -> bytes:
     key_response = await get_key(target_key_id)
     
     combined_key = derive_key(
-        shared_secret + key_response["key_material"],
+        shared_secret + key_response.key_material,
         b"qumail-pqc-hybrid",
         32,
     )
@@ -482,4 +574,21 @@ async def _decrypt_pqc_bytes(envelope: Dict[str, Any], key_id: str) -> bytes:
     tag = base64.b64decode(envelope["tag"])
     ciphertext = base64.b64decode(envelope["ciphertext"])
     
-    return aes_decrypt(ciphertext, combined_key, nonce, tag)
+    try:
+        return aes_decrypt(ciphertext, combined_key, nonce, tag)
+    except Exception as e:
+        if "sender_encap" in envelope and "sender_enc_ck" in envelope:
+            sender_encap = base64.b64decode(envelope["sender_encap"])
+            sender_enc_ck_full = base64.b64decode(envelope["sender_enc_ck"])
+            ck_nonce = sender_enc_ck_full[:12]
+            ck_tag = sender_enc_ck_full[12:28]
+            enc_ck = sender_enc_ck_full[28:]
+            
+            sender_ss = pqc_decrypt(sender_encap, private_key)
+            try:
+                combined_key = aes_decrypt(enc_ck, sender_ss, ck_nonce, ck_tag)
+                return aes_decrypt(ciphertext, combined_key, nonce, tag)
+            except Exception:
+                raise e
+        else:
+            raise e

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Trash2, Reply, Forward, Download } from 'lucide-react'
-import { getEmail, deleteEmail } from '../../api/emails'
+import DOMPurify from 'isomorphic-dompurify'
+import { getEmail, deleteEmail, downloadAttachment } from '../../api/emails'
 import SecurityBadge from '../Security/SecurityBadge'
 import type { Email } from '../../types/email'
 import './EmailView.css'
@@ -13,18 +14,22 @@ export default function EmailView() {
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
+    const location = useLocation()
+    const queryParams = new URLSearchParams(location.search)
+    const folder = queryParams.get('folder') || 'INBOX'
+
     useEffect(() => {
         if (messageId) {
-            loadEmail(messageId)
+            loadEmail(messageId, folder)
         }
-    }, [messageId])
+    }, [messageId, folder])
 
-    async function loadEmail(id: string) {
+    async function loadEmail(id: string, folderStr: string) {
         setIsLoading(true)
         setError(null)
 
         try {
-            const data = await getEmail(id)
+            const data = await getEmail(id, folderStr)
             setEmail(data)
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load email')
@@ -41,6 +46,15 @@ export default function EmailView() {
             navigate('/inbox')
         } catch (err) {
             alert('Failed to delete email')
+        }
+    }
+
+    async function handleDownload(attachmentId: string, filename: string) {
+        if (!messageId) return
+        try {
+            await downloadAttachment(messageId, attachmentId, filename)
+        } catch (err) {
+            alert('Failed to download attachment')
         }
     }
 
@@ -91,6 +105,11 @@ export default function EmailView() {
                     <div className="email-view-title">
                         <h1>{email.subject}</h1>
                         <SecurityBadge level={email.security_level} size="large" showLabel />
+                        {email.ai_security_score !== undefined && email.ai_security_score > 50 && (
+                            <div className="ai-warning" style={{ color: '#ff4444', marginLeft: '1rem', fontWeight: 'bold' }} title={email.ai_security_reasons?.join('\n')}>
+                                ⚠️ AI Threat Score: {email.ai_security_score}%
+                            </div>
+                        )}
                     </div>
 
                     <div className="email-meta">
@@ -125,7 +144,7 @@ export default function EmailView() {
 
                 <div className="email-body">
                     {email.html_body ? (
-                        <div dangerouslySetInnerHTML={{ __html: email.html_body }} />
+                        <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(email.html_body) }} />
                     ) : (
                         <pre>{email.body}</pre>
                     )}
@@ -139,7 +158,11 @@ export default function EmailView() {
                                 <div key={att.id} className="attachment-item">
                                     <span className="attachment-name">{att.filename}</span>
                                     <span className="attachment-size">{formatSize(att.size)}</span>
-                                    <button className="attachment-download">
+                                    <button
+                                        className="attachment-download"
+                                        onClick={() => handleDownload(att.id, att.filename)}
+                                        title={`Download ${att.filename}`}
+                                    >
                                         <Download size={14} />
                                     </button>
                                 </div>

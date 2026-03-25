@@ -177,7 +177,7 @@ async def fetch_emails(
             pass
 
 
-async def get_email_by_id(message_id: str) -> Optional[Dict[str, Any]]:
+async def get_email_by_id(message_id: str, folder: str = "INBOX") -> Optional[Dict[str, Any]]:
     from storage.database import get_stored_accounts
     
     accounts = await get_stored_accounts()
@@ -193,7 +193,12 @@ async def get_email_by_id(message_id: str) -> Optional[Dict[str, Any]]:
     
     try:
         _oauth2_authenticate(imap, email_address, access_token)
-        imap.select("INBOX", readonly=True)
+        imap_folder = _map_folder_name(folder, email_address)
+        quoted_folder = f'"{imap_folder}"' if " " in imap_folder or "[" in imap_folder else imap_folder
+        status, data = imap.select(quoted_folder, readonly=True)
+        if status != "OK":
+            logger.error("Failed to select folder %s for get_email: %s", imap_folder, data)
+            return None
         
         status, data = imap.fetch(message_id.encode() if isinstance(message_id, str) else message_id, "(RFC822)")
         
@@ -287,6 +292,9 @@ async def get_attachment_content(
     message_id: str,
     attachment_id: str,
 ) -> Optional[Dict[str, Any]]:
+    # When downloading an attachment, we probably need to know the folder too, 
+    # but for simplicity we default to INBOX or search all if it's a future optimization.
+    # Currently attachments download just uses get_email_by_id defaults.
     email_data = await get_email_by_id(message_id)
     if not email_data:
         return None

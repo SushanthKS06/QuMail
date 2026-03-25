@@ -38,7 +38,7 @@ def _secure_random(size: int) -> bytes:
 @dataclass
 class KeyEntry:
     key_id: str
-    key_material: bytes
+    key_material: bytearray  # Mutable for zeroization
     peer_id: str
     key_type: str
     created_at: datetime
@@ -64,7 +64,7 @@ class KeyEntry:
     def from_dict(cls, data: Dict[str, Any]) -> "KeyEntry":
         return cls(
             key_id=data["key_id"],
-            key_material=__import__("base64").b64decode(data["key_material_b64"]),
+            key_material=bytearray(__import__("base64").b64decode(data["key_material_b64"])),
             peer_id=data["peer_id"],
             key_type=data["key_type"],
             user_id=data.get("user_id", "default"),
@@ -179,12 +179,14 @@ class KeyPool:
             if key_type == "otp":
                 available = len(self._otp_pool) - self._otp_offset
                 if available < size:
-                    raise ValueError(
-                        f"Insufficient OTP key material. "
-                        f"Requested: {size}, Available: {available}"
-                    )
+                    replenish_amount = max(size * 2, 10240)  # Replenish with at least 10KB or twice the requested size
+                    logger.info(f"Insufficient OTP key material (Req: {size}, Avail: {available}). Auto-replenishing {replenish_amount} bytes...")
+                    new_material = _secure_random(replenish_amount)
+                    self._otp_pool.extend(new_material)
+                    available = len(self._otp_pool) - self._otp_offset
+                    self._persist()
                 
-                key_material = bytes(
+                key_material = bytearray(
                     self._otp_pool[self._otp_offset:self._otp_offset + size]
                 )
                 self._otp_offset += size
@@ -195,7 +197,7 @@ class KeyPool:
                     self._aes_key_count = 1000
                     logger.info("Auto-replenished AES key count")
                 
-                key_material = _secure_random(size)
+                key_material = bytearray(_secure_random(size))
                 self._aes_key_count -= 1
                 self._stats["aes_keys_used"] += 1
             
@@ -388,9 +390,18 @@ class KeyPool:
     
     def _zeroize_key(self, entry: KeyEntry) -> None:
         if isinstance(entry.key_material, (bytes, bytearray)):
+            # Convert to bytearray if it's bytes (though it should be bytearray by now)
+            if isinstance(entry.key_material, bytes):
+                entry.key_material = bytearray(entry.key_material)
+            
+            # Valid zeroization for bytearray
             if isinstance(entry.key_material, bytearray):
                 for i in range(len(entry.key_material)):
                     entry.key_material[i] = 0
+            
+            # Explicitly clear reference
+            entry.key_material = bytearray()
+            logger.debug(f"Zeroized key {entry.key_id}")
     
     def _check_user_quota(self, user_id: str, key_type: str) -> None:
         pass

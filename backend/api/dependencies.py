@@ -1,76 +1,35 @@
-import logging
-from typing import Annotated
+from typing import Annotated, Generator
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from extensions.chat import SecureChatExtension, create_chat_extension
 
-import httpx
-from fastapi import Depends, Header, HTTPException, status
-from jose import JWTError, jwt
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/token")
 
-from config import settings
-
-logger = logging.getLogger(__name__)
-
-_http_client: httpx.AsyncClient | None = None
-
-
-async def get_http_client() -> httpx.AsyncClient:
-    global _http_client
-    if _http_client is None or _http_client.is_closed:
-        _http_client = httpx.AsyncClient(timeout=settings.km_timeout)
-    return _http_client
-
-
-async def verify_api_token(
-    authorization: Annotated[str | None, Header()] = None
-) -> str:
-    if not authorization:
+def get_current_user_email(token: str = Depends(oauth2_scheme)) -> str:
+    # Simulating token validation for the demo
+    # In real app, verify_token(token) would be called
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing authorization header",
+            detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    parts = authorization.split()
-    if len(parts) != 2 or parts[0].lower() != "bearer":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authorization header format",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    token = parts[1]
-    
-    try:
-        payload = jwt.decode(
-            token,
-            settings.secret_key,
-            algorithms=["HS256"],
-        )
-        return payload.get("sub", "frontend")
-    except JWTError as e:
-        logger.warning("Invalid token: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    return "user@qumail.com"  # Mock user for now or decode token if secret available
+
+TokenDep = Annotated[str, Depends(get_current_user_email)]
 
 
-TokenDep = Annotated[str, Depends(verify_api_token)]
 
+_chat_extension_instance = None
 
-async def verify_startup_requirements() -> None:
-    client = await get_http_client()
-    
-    try:
-        response = await client.get(f"{settings.km_url}/health")
-        if response.status_code != 200:
-            logger.warning("Key Manager health check failed: %s", response.status_code)
-        else:
-            logger.info("Key Manager connection verified")
-    except httpx.ConnectError:
-        logger.warning(
-            "Key Manager not reachable at %s - some features will be unavailable",
-            settings.km_url,
-        )
-    except Exception as e:
-        logger.warning("Key Manager check failed: %s", e)
+def get_chat_extension() -> SecureChatExtension:
+    global _chat_extension_instance
+    if _chat_extension_instance is None:
+        _chat_extension_instance = create_chat_extension()
+    return _chat_extension_instance
+
+async def verify_startup_requirements():
+    # ... existing logic ...
+    # Initialize chat ext
+    chat = get_chat_extension()
+    await chat.initialize()

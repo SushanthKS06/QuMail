@@ -29,14 +29,21 @@ class QKDLink:
         if settings.ssl_cert_file and settings.ssl_key_file:
             cert = (str(settings.ssl_cert_file), str(settings.ssl_key_file))
             
-        self._http_client = httpx.AsyncClient(
-            timeout=10.0,
-            verify=verify,
-            cert=cert
-        )
+        self._httpx_kwargs = {
+            "timeout": 10.0,
+            "verify": verify,
+            "cert": cert
+        }
+        self._http_client = None
         self._background_tasks = set()
     
-    async def push_key(self, peer_id: str, key_entry: Any) -> bool:
+    @property
+    def http_client(self):
+        if self._http_client is None:
+            self._http_client = httpx.AsyncClient(**self._httpx_kwargs)
+        return self._http_client
+    
+    def push_key(self, peer_id: str, key_entry: Any) -> bool:
         """
         Active push of generated key to the peer's Key Manager.
         Simulates the transmission of photons over fiber optics.
@@ -65,11 +72,24 @@ class QKDLink:
         
         # Fire and forget (or rather, fire and log) to avoid blocking the main thread
         # In a robust system, this would go into a durable queue (Redpanda/RabbitMQ)
-        task = asyncio.create_task(self._send_key(peer_url, payload))
-        self._background_tasks.add(task)
-        task.add_done_callback(self._background_tasks.discard)
+        
+        # We are called from a synchronous context (key_pool.allocate_key inside a lock),
+        # so we cannot use asyncio.create_task directly without an event loop context.
+        # So we use asyncio.run_coroutine_threadsafe or fire it in a background thread
+        # if there is no running loop.
+        try:
+            loop = asyncio.get_running_loop()
+            task = loop.create_task(self._send_key(peer_url, payload))
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
+        except RuntimeError:
+            import threading
+            def run_in_new_loop():
+                asyncio.run(self._send_key(peer_url, payload))
+            threading.Thread(target=run_in_new_loop, daemon=True).start()
+            
         return True
-    
+        
     async def _send_key(self, url: str, payload: Dict[str, Any]) -> None:
         try:
             # Add authentication (simulating mutual authentication of QKD nodes)
@@ -78,7 +98,7 @@ class QKDLink:
                 "Content-Type": "application/json"
             }
             
-            response = await self._http_client.post(
+            response = await self.http_client.post(
                 f"{url}/api/v1/keys/exchange", 
                 json=payload,
                 headers=headers
@@ -93,7 +113,8 @@ class QKDLink:
             logger.error(f"QKD LINK: Connection error pushing key: {e}")
             
     async def shutdown(self):
-        await self._http_client.aclose()
+        if self._http_client is not None:
+            await self._http_client.aclose()
         
     
 # Global instance

@@ -51,7 +51,7 @@ export default function EmailList({ folder }: Props) {
                     <div
                         key={email.message_id}
                         className={`email-item ${!email.is_read ? 'unread' : ''}`}
-                        onClick={() => navigate(`/email/${email.message_id}`)}
+                        onClick={() => navigate(`/email/${email.message_id}?folder=${folder}`)}
                     >
                         <div className="email-item-left">
                             <SecurityBadge level={email.security_level} size="small" />

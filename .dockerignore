@@ -1,0 +1,32 @@
+# Version Control
+.git/
+.gitignore
+
+# Environments
+myenv/
+venv/
+.venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build Outputs
+dist/
+build/
+release/
+
+# Project Specific
+backend/data/
+key_manager/data/
+electron/dist/
+electron/release/
+*.log
+.env

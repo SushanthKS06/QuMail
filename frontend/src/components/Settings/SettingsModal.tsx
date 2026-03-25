@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { X, Moon, Sun, Shield, User } from 'lucide-react'
 import { getSettings, updateSettings } from '../../api/settings'
 import { useToast } from '../Toast/Toast'
+import DiagnosticsPanel from '../Security/DiagnosticsPanel'
 import './SettingsModal.css'
 
 interface SettingsModalProps {
@@ -121,11 +122,14 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                 value={securityLevel}
                                 onChange={(e) => handleSecurityLevelChange(Number(e.target.value))}
                             >
-                                <option value="1">Standard (AES)</option>
-                                <option value="2">Quantum-Aided (AES+QKD)</option>
-                                <option value="3">Information-Theoretic (OTP)</option>
+                                <option value="1">Quantum Secure OTP (Level 1)</option>
+                                <option value="2">Quantum-Aided AES (Level 2)</option>
+                                <option value="3">Post-Quantum Crypto (Level 3)</option>
+                                <option value="4">No Security (Level 4)</option>
                             </select>
                         </div>
+                        <div className="settings-divider"></div>
+                        <DiagnosticsPanel />
                     </section>
                 </div>
 

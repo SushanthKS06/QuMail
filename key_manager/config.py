@@ -1,9 +1,9 @@
 import secrets
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     debug: bool = False
     
     host: str = "127.0.0.1"
-    port: int = 8100
+    port: int = 8200
     
     api_token: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
     
@@ -49,6 +49,17 @@ class Settings(BaseSettings):
     local_peer_id: str = "km-local"
     peers: Dict[str, str] = {}  # Format: {"km-remote": "http://remote-ip:8100"}
     qkd_link_secret: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
+
+    @field_validator("peers", mode="before")
+    @classmethod
+    def parse_peers(cls, v: Any) -> Dict[str, str]:
+        if isinstance(v, str):
+            import ast
+            try:
+                return ast.literal_eval(v)
+            except Exception:
+                pass
+        return v
 
     # mTLS Security
     ssl_ca_file: Optional[Path] = Field(default=None) # Path to CA cert to verify clients

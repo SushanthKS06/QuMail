@@ -25,12 +25,12 @@ class Settings(BaseSettings):
     port: int = 8000
     
     secret_key: str = Field(default_factory=lambda: secrets.token_hex(32))
-    api_token: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
+    api_token: str = "change_this_to_another_random_string"
     token_expire_minutes: int = 1440
     
-    km_url: str = "http://127.0.0.1:8100"
+    km_url: str = "http://127.0.0.1:8200"
     km_token: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
-    km_timeout: int = 30
+    km_timeout: int = 60
     
     default_security_level: int = 2
     
@@ -42,6 +42,13 @@ class Settings(BaseSettings):
     yahoo_client_secret: str = ""
     yahoo_redirect_uri: str = "http://127.0.0.1:8000/api/v1/auth/oauth/yahoo/callback"
     
+    # SMTP Configuration (defaults to Gmail for backward compatibility)
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_from_email: str = "" # Optional override
+    
+    frontend_url: str = "http://localhost:5174"
+    
     data_dir: Path = Field(default_factory=lambda: Path("./data"))
     db_encryption_key: str = Field(default_factory=lambda: secrets.token_hex(32))
     
@@ -51,13 +58,6 @@ class Settings(BaseSettings):
     @classmethod
     def ensure_data_dir_exists(cls, v: Path) -> Path:
         v.mkdir(parents=True, exist_ok=True)
-        return v
-    
-    @field_validator("host")
-    @classmethod
-    def validate_localhost_only(cls, v: str) -> str:
-        if v not in ("127.0.0.1", "localhost", "::1"):
-            raise ValueError("Backend must bind to localhost only for security")
         return v
     
     @property

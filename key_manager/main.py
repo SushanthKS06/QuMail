@@ -10,7 +10,8 @@ from typing import Dict
 import uvicorn
 from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from api import keys, status as status_api
 from config import settings
@@ -26,36 +27,39 @@ logger = logging.getLogger(__name__)
 key_pool: KeyPool = None
 
 
-class RateLimitMiddleware(BaseHTTPMiddleware):
+class RateLimitMiddleware:
+    """Pure ASGI middleware to avoid BaseHTTPMiddleware deadlock issues."""
     
-    def __init__(self, app, requests_per_minute: int = 100):
-        super().__init__(app)
+    def __init__(self, app: ASGIApp, requests_per_minute: int = 100):
+        self.app = app
         self.requests_per_minute = requests_per_minute
         self.request_counts: Dict[str, list] = defaultdict(list)
-        self._lock = asyncio.Lock()
     
-    async def dispatch(self, request: Request, call_next):
-        if not settings.rate_limit_enabled:
-            return await call_next(request)
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] != "http" or not settings.rate_limit_enabled:
+            await self.app(scope, receive, send)
+            return
         
-        client_ip = request.client.host if request.client else "unknown"
+        client = scope.get("client")
+        client_ip = client[0] if client else "unknown"
         current_time = time.time()
         
-        async with self._lock:
-            self.request_counts[client_ip] = [
-                t for t in self.request_counts[client_ip]
-                if current_time - t < 60
-            ]
-            
-            if len(self.request_counts[client_ip]) >= self.requests_per_minute:
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail=f"Rate limit exceeded. Max {self.requests_per_minute} requests per minute."
-                )
-            
-            self.request_counts[client_ip].append(current_time)
+        # Clean old entries and check rate limit
+        self.request_counts[client_ip] = [
+            t for t in self.request_counts[client_ip]
+            if current_time - t < 60
+        ]
         
-        return await call_next(request)
+        if len(self.request_counts[client_ip]) >= self.requests_per_minute:
+            response = JSONResponse(
+                status_code=429,
+                content={"detail": f"Rate limit exceeded. Max {self.requests_per_minute} requests per minute."}
+            )
+            await response(scope, receive, send)
+            return
+        
+        self.request_counts[client_ip].append(current_time)
+        await self.app(scope, receive, send)
 
 
 async def cleanup_expired_keys():
@@ -103,9 +107,14 @@ async def lifespan(app: FastAPI):
         audit_path=settings.audit_path if settings.audit_enabled else None,
     )
     
-    key_pool.initialize(
-        otp_bytes=settings.initial_otp_pool_bytes,
-        aes_keys=settings.initial_aes_keys,
+    # Run blocking initialization in thread executor to keep event loop responsive
+    import asyncio
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(
+        None,
+        key_pool.initialize,
+        settings.initial_otp_pool_bytes,
+        settings.initial_aes_keys,
     )
     
     stats = key_pool.get_stats()
@@ -167,7 +176,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:3000", "http://localhost:3000"],
+    allow_origins=["http://127.0.0.1:3000", "http://localhost:3000", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],

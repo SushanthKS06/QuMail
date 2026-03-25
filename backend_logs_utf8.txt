@@ -1,0 +1,41 @@
+﻿2026-02-19 17:12:41,777 - main - INFO - Starting QuMail Backend v1.0.0
+2026-02-19 17:12:41,777 - main - INFO - Binding to 127.0.0.1:8000 (localhost only)
+2026-02-19 17:12:41,906 - storage.database - INFO - Database schema initialized
+2026-02-19 17:12:41,906 - main - INFO - Database initialized at data/qumail.db
+2026-02-19 17:12:41,906 - extensions.chat - INFO - Initializing SecureChatExtension...
+2026-02-19 17:12:41,906 - extensions.chat - INFO - SecureChatExtension initialized successfully
+2026-02-19 17:12:41,906 - main - INFO - Startup requirements verified
+2026-02-19 17:15:42,305 - api.auth - INFO - Generated API token, expires in 1440 minutes
+INFO:     172.18.0.4:34530 - "POST /api/v1/auth/token HTTP/1.0" 200 OK
+INFO:     172.18.0.4:34534 - "GET /api/v1/auth/status HTTP/1.0" 200 OK
+INFO:     172.18.0.4:47804 - "POST /api/v1/auth/oauth/gmail/init HTTP/1.0" 500 Internal Server Error
+INFO:     172.18.0.4:47810 - "POST /api/v1/auth/oauth/gmail/init HTTP/1.0" 500 Internal Server Error
+INFO:     172.18.0.4:47824 - "POST /api/v1/auth/oauth/gmail/init HTTP/1.0" 500 Internal Server Error
+INFO:     172.18.0.4:47832 - "POST /api/v1/auth/oauth/gmail/init HTTP/1.0" 500 Internal Server Error
+INFO:     172.18.0.4:47840 - "POST /api/v1/auth/oauth/gmail/init HTTP/1.0" 500 Internal Server Error
+INFO:     172.18.0.4:58792 - "POST /api/v1/auth/oauth/gmail/init HTTP/1.0" 500 Internal Server Error
+2026-02-19 17:18:21,573 - main - INFO - Shutting down QuMail Backend
+2026-02-19 17:18:46,549 - main - INFO - Starting QuMail Backend v1.0.0
+2026-02-19 17:18:46,550 - main - INFO - Binding to 127.0.0.1:8000 (localhost only)
+2026-02-19 17:18:46,559 - storage.database - INFO - Database schema initialized
+2026-02-19 17:18:46,560 - main - INFO - Database initialized at data/qumail.db
+2026-02-19 17:18:46,560 - extensions.chat - INFO - Initializing SecureChatExtension...
+2026-02-19 17:18:46,561 - extensions.chat - INFO - SecureChatExtension initialized successfully
+2026-02-19 17:18:46,562 - main - INFO - Startup requirements verified
+INFO:     172.18.0.4:43356 - "GET /api/v1/auth/status HTTP/1.0" 200 OK
+2026-02-19 17:19:01,994 - api.auth - INFO - Initiated Gmail OAuth flow
+INFO:     172.18.0.4:43360 - "POST /api/v1/auth/oauth/gmail/init HTTP/1.0" 200 OK
+2026-02-19 17:21:17,244 - httpx - INFO - HTTP Request: POST https://oauth2.googleapis.com/token "HTTP/1.1 200 OK"
+2026-02-19 17:21:17,755 - httpx - INFO - HTTP Request: GET https://www.googleapis.com/oauth2/v2/userinfo "HTTP/1.1 200 OK"
+2026-02-19 17:21:17,778 - storage.database - INFO - Stored OAuth tokens for k.s.sushanth06@gmail.com (gmail)
+2026-02-19 17:21:17,778 - api.auth - INFO - Gmail OAuth completed for k.s.sushanth06@gmail.com
+INFO:     172.18.0.1:49850 - "GET /api/v1/auth/oauth/gmail/callback?state=kwfkQTxzIBQF9azCLjQZ3bgyC_1HSIqhyl427ep2Ki0&code=4%2F0AfrIepDbzQeCFtg9EDQC3hXNX9MzX6Lytf3_kmqGHYmb1pl5db751MAh9BI5vBWoluOQlg&scope=email+profile+https%3A%2F%2Fmail.google.com%2F+openid+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile&authuser=0&prompt=consent HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.4:39348 - "GET /api/v1/auth/status HTTP/1.0" 200 OK
+INFO:     172.18.0.4:39358 - "GET /api/v1/security/status HTTP/1.0" 200 OK
+INFO:     172.18.0.4:39360 - "GET /api/v1/emails?folder=INBOX&page=1&limit=20 HTTP/1.0" 200 OK
+INFO:     172.18.0.4:43630 - "GET /api/v1/security/status HTTP/1.0" 200 OK
+INFO:     172.18.0.4:49444 - "GET /api/v1/security/status HTTP/1.0" 200 OK
+INFO:     172.18.0.4:55858 - "GET /api/v1/security/status HTTP/1.0" 200 OK
+INFO:     172.18.0.4:36874 - "GET /api/v1/security/status HTTP/1.0" 200 OK
+INFO:     172.18.0.4:56460 - "GET /api/v1/security/status HTTP/1.0" 200 OK
+2026-02-19 17:23:52,802 - main - INFO - Shutting down QuMail Backend

@@ -52,15 +52,18 @@ class ProvisionResponse(BaseModel):
 
 @router.post("/request", response_model=KeyResponse)
 async def request_key(request: Request, body: KeyRequestBody):
+    logger.info("Received request for key: %s", body)
     key_pool = request.app.state.key_pool
     
     try:
+        logger.info("Calling allocate_key in pool...")
         key_entry = key_pool.allocate_key(
             peer_id=body.peer_id,
             size=body.size,
             key_type=body.key_type,
             user_id=body.user_id,
         )
+        logger.info("allocate_key returned.")
         
         logger.info(
             "Allocated key %s for peer %s, type=%s, size=%d",
@@ -149,7 +152,7 @@ class ExchangeKeyBody(BaseModel):
     expires_at: Optional[str] = None
 
 
-@router.post("/exchange", response_model=Dict[str, bool])
+@router.post("/exchange", response_model=dict[str, bool])
 async def exchange_key(request: Request, body: ExchangeKeyBody):
     # Verify the shared secret to ensure this comes from a trusted QKD node
     expected_secret = request.app.state.settings.qkd_link_secret

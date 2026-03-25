@@ -187,13 +187,17 @@ class SecureVoiceExtension(SecureExtension):
         This establishes the session and requests QKD key material
         for SRTP encryption.
         """
-        from qkd_client import request_key
+        from qkd_client import request_key, KeyRequestError
         
-        key_response = await request_key(
-            peer_id=callee,
-            size=32,
-            key_type="aes_seed",
-        )
+        try:
+            key_response = await request_key(
+                peer_id=callee,
+                size=32,
+                key_type="aes_seed",
+            )
+        except KeyRequestError as e:
+            logger.error("Failed to initiate secure call: %s", e)
+            raise
         
         session = CallSession(
             id=str(uuid4()),
@@ -202,7 +206,7 @@ class SecureVoiceExtension(SecureExtension):
             call_type=call_type,
             security_level=security_level,
             state=CallState.INITIATING,
-            session_key_id=key_response["key_id"],
+            session_key_id=key_response.key_id,
             started_at=datetime.now(timezone.utc),
         )
         
@@ -250,7 +254,7 @@ class SecureVoiceExtension(SecureExtension):
             raise ValueError("Invalid session or missing session key")
         
         key_response = await get_key(session.session_key_id)
-        qkd_material = key_response["key_material"]
+        qkd_material = key_response.key_material
         
         # SRTP typically uses 128-bit master key and 112-bit salt
         master_key = derive_key(qkd_material, b"srtp-master-key", 16)

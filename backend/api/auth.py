@@ -5,6 +5,7 @@ from typing import Optional
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, Query, status
+from fastapi.responses import RedirectResponse
 from jose import jwt
 from pydantic import BaseModel
 
@@ -13,7 +14,7 @@ from config import settings
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-_oauth_states: dict[str, datetime] = {}
+router = APIRouter()
 
 
 class TokenRequest(BaseModel):
@@ -78,9 +79,9 @@ async def init_gmail_oauth() -> OAuthInitResponse:
         )
     
     state = secrets.token_urlsafe(32)
-    _oauth_states[state] = datetime.now(timezone.utc)
     
-    _cleanup_expired_states()
+    from storage.database import save_oauth_state
+    await save_oauth_state(state)
     
     params = {
         "client_id": settings.gmail_client_id,
@@ -98,30 +99,25 @@ async def init_gmail_oauth() -> OAuthInitResponse:
     return OAuthInitResponse(auth_url=auth_url, state=state)
 
 
-@router.get("/oauth/gmail/callback", response_model=OAuthCallbackResponse)
+@router.get("/oauth/gmail/callback")
 async def gmail_oauth_callback(
     code: Optional[str] = Query(None),
     state: Optional[str] = Query(None),
     error: Optional[str] = Query(None),
-) -> OAuthCallbackResponse:
+):
+    frontend_url = settings.frontend_url
+    
     if error:
         logger.warning("OAuth error: %s", error)
-        return OAuthCallbackResponse(success=False, error=error)
+        return RedirectResponse(url=f"{frontend_url}?auth_error={error}")
     
     if not code or not state:
-        return OAuthCallbackResponse(
-            success=False,
-            error="Missing code or state parameter",
-        )
+        return RedirectResponse(url=f"{frontend_url}?auth_error=missing_parameters")
     
-    if state not in _oauth_states:
-        logger.warning("Invalid OAuth state received")
-        return OAuthCallbackResponse(
-            success=False,
-            error="Invalid state - possible CSRF attack",
-        )
-    
-    del _oauth_states[state]
+    from storage.database import get_and_delete_oauth_state
+    if not await get_and_delete_oauth_state(state):
+        logger.warning("Invalid or expired OAuth state received")
+        return RedirectResponse(url=f"{frontend_url}?auth_error=invalid_state")
     
     import httpx
     
@@ -140,10 +136,7 @@ async def gmail_oauth_callback(
             
             if token_response.status_code != 200:
                 logger.error("Token exchange failed: %s", token_response.text)
-                return OAuthCallbackResponse(
-                    success=False,
-                    error="Failed to exchange authorization code",
-                )
+                return RedirectResponse(url=f"{frontend_url}?auth_error=token_exchange_failed")
             
             tokens = token_response.json()
             
@@ -167,14 +160,11 @@ async def gmail_oauth_callback(
             )
             
             logger.info("Gmail OAuth completed for %s", email)
-            return OAuthCallbackResponse(success=True, email=email)
+            return RedirectResponse(url=f"{frontend_url}?auth_success=true")
             
     except Exception as e:
         logger.exception("OAuth callback error: %s", e)
-        return OAuthCallbackResponse(
-            success=False,
-            error=str(e),
-        )
+        return RedirectResponse(url=f"{frontend_url}?auth_error={str(e)}")
 
 
 @router.get("/status")
@@ -212,9 +202,10 @@ async def init_yahoo_oauth() -> OAuthInitResponse:
         )
     
     state = secrets.token_urlsafe(32)
-    _oauth_states[state] = datetime.now(timezone.utc)
+    state = secrets.token_urlsafe(32)
     
-    _cleanup_expired_states()
+    from storage.database import save_oauth_state
+    await save_oauth_state(state)
     
     params = {
         "client_id": settings.yahoo_client_id,
@@ -230,30 +221,25 @@ async def init_yahoo_oauth() -> OAuthInitResponse:
     return OAuthInitResponse(auth_url=auth_url, state=state)
 
 
-@router.get("/oauth/yahoo/callback", response_model=OAuthCallbackResponse)
+@router.get("/oauth/yahoo/callback")
 async def yahoo_oauth_callback(
     code: Optional[str] = Query(None),
     state: Optional[str] = Query(None),
     error: Optional[str] = Query(None),
-) -> OAuthCallbackResponse:
+):
+    frontend_url = settings.frontend_url
+    
     if error:
         logger.warning("Yahoo OAuth error: %s", error)
-        return OAuthCallbackResponse(success=False, error=error)
+        return RedirectResponse(url=f"{frontend_url}?auth_error={error}")
     
     if not code or not state:
-        return OAuthCallbackResponse(
-            success=False,
-            error="Missing code or state parameter",
-        )
+        return RedirectResponse(url=f"{frontend_url}?auth_error=missing_parameters")
     
-    if state not in _oauth_states:
-        logger.warning("Invalid Yahoo OAuth state received")
-        return OAuthCallbackResponse(
-            success=False,
-            error="Invalid state - possible CSRF attack",
-        )
-    
-    del _oauth_states[state]
+    from storage.database import get_and_delete_oauth_state
+    if not await get_and_delete_oauth_state(state):
+        logger.warning("Invalid or expired Yahoo OAuth state received")
+        return RedirectResponse(url=f"{frontend_url}?auth_error=invalid_state")
     
     import httpx
     import base64
@@ -279,10 +265,7 @@ async def yahoo_oauth_callback(
             
             if token_response.status_code != 200:
                 logger.error("Yahoo token exchange failed: %s", token_response.text)
-                return OAuthCallbackResponse(
-                    success=False,
-                    error="Failed to exchange authorization code",
-                )
+                return RedirectResponse(url=f"{frontend_url}?auth_error=token_exchange_failed")
             
             tokens = token_response.json()
             
@@ -307,21 +290,11 @@ async def yahoo_oauth_callback(
             )
             
             logger.info("Yahoo OAuth completed for %s", email)
-            return OAuthCallbackResponse(success=True, email=email)
+            return RedirectResponse(url=f"{frontend_url}?auth_success=true")
             
     except Exception as e:
         logger.exception("Yahoo OAuth callback error: %s", e)
-        return OAuthCallbackResponse(
-            success=False,
-            error=str(e),
-        )
+        return RedirectResponse(url=f"{frontend_url}?auth_error={str(e)}")
 
 
-def _cleanup_expired_states():
-    now = datetime.now(timezone.utc)
-    expired = [
-        state for state, created in _oauth_states.items()
-        if (now - created).total_seconds() > 600
-    ]
-    for state in expired:
-        del _oauth_states[state]
+

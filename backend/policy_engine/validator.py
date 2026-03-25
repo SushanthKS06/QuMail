@@ -79,11 +79,10 @@ async def validate_send_request(
         
         status = await get_key_status()
         if not status.get("connected"):
-            logger.warning("Key Manager not connected, falling back to level 4")
+            logger.warning("Key Manager not connected, blocking encrypted send")
             return {
-                "valid": True,
-                "adjusted_level": 4,
-                "warnings": ["Key Manager unavailable, sending without encryption"],
+                "valid": False,
+                "error": "Key Manager is not connected. Cannot send encrypted email. Please restart the application or try again.",
             }
     
     return {
@@ -108,5 +107,5 @@ async def check_recipient_capability(email: str) -> Dict[str, Any]:
     return {
         "email": email,
         "is_qumail_user": False,
-        "supported_levels": [4],
+        "supported_levels": [1, 2, 3, 4],
     }

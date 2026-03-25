@@ -96,7 +96,9 @@ class PersistentKeyStore:
             return {"keys": {}, "stats": {}, "version": STORE_VERSION}
     
     def save(self, data: Dict[str, Any]) -> None:
+        logger.info("[PersistentKeyStore] Waiting for lock in save")
         with self._lock:
+            logger.info("[PersistentKeyStore] Acquired lock in save")
             if not self._initialized:
                 raise RuntimeError("Store not initialized")
             

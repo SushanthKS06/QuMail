@@ -67,7 +67,6 @@ class SecureChatExtension(SecureExtension):
         security_level: SecurityLevel = SecurityLevel.AES,
     ) -> EncryptedMessage:
         from crypto_engine import encrypt_email
-        from qkd_client import request_key
         
         if security_level == SecurityLevel.NONE:
             return EncryptedMessage(

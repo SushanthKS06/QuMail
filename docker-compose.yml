@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: qumail-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - qumail-data:/app/data
+    environment:
+      - HOST=0.0.0.0
+      - DB_PATH=/app/data/qumail.db
+      - KM_URL=http://key_manager:8200
+      - FRONTEND_URL=http://localhost:5173
+      - QUMAIL_DEV_MODE=1
+    networks:
+      - qumail-net
+
+  frontend:
+    build: ./frontend
+    container_name: qumail-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - qumail-net
+
+  key_manager:
+    build:
+      context: .
+      dockerfile: key_manager/Dockerfile
+    container_name: qumail-km
+    ports:
+      - "8200:8200"
+    volumes:
+      - ./key_manager:/app
+      - km-data:/app/data
+    environment:
+      - HOST=0.0.0.0
+      - QUMAIL_DEV_MODE=1
+    networks:
+      - qumail-net
+
+volumes:
+  qumail-data:
+  km-data:
+
+networks:
+  qumail-net:
+    driver: bridge

@@ -43,11 +43,15 @@ class EntropyPool:
         entropy_sources.append(("os_urandom", os_entropy))
         self._sources_available.append("os_urandom")
         
+        _DEV_MODE = os.environ.get("QUMAIL_DEV_MODE", "0") == "1"
+        
         try:
-            cng_entropy = self._get_windows_cng_entropy(64)
-            if cng_entropy:
-                entropy_sources.append(("windows_cng", cng_entropy))
-                self._sources_available.append("windows_cng")
+            # Skip CNG in dev mode on Windows to avoid hangs in some environments
+            if not _DEV_MODE:
+                cng_entropy = self._get_windows_cng_entropy(64)
+                if cng_entropy:
+                    entropy_sources.append(("windows_cng", cng_entropy))
+                    self._sources_available.append("windows_cng")
         except Exception as e:
             logger.debug("Windows CNG not available: %s", e)
         
@@ -228,7 +232,7 @@ class ChaCha20CSPRNG:
     
     def __init__(self, entropy_pool: EntropyPool):
         self._entropy_pool = entropy_pool
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._key = bytearray(32)
         self._nonce = bytearray(16)
         self._counter = 0
@@ -250,13 +254,18 @@ class ChaCha20CSPRNG:
             self._bytes_generated = 0
     
     def generate(self, size: int) -> bytes:
+        logger.info("[CSPRNG] generate called with size=%d", size)
         if size <= 0:
             raise ValueError("Size must be positive")
         
+        logger.info("[CSPRNG] waiting for lock in generate")
         with self._lock:
+            logger.info("[CSPRNG] acquired lock in generate")
             if self._bytes_generated >= self._reseed_threshold:
+                logger.info("[CSPRNG] reseeding...")
                 self._reseed()
             
+            logger.info("[CSPRNG] actually generating %d bytes, HAS_CRYPTOGRAPHY=%s", size, HAS_CRYPTOGRAPHY)
             if HAS_CRYPTOGRAPHY:
                 output = self._generate_chacha20(size)
             else:
@@ -265,6 +274,7 @@ class ChaCha20CSPRNG:
             self._bytes_generated += size
             self._counter += 1
             
+            logger.info("[CSPRNG] generate complete")
             return output
     
     def _generate_chacha20(self, size: int) -> bytes:

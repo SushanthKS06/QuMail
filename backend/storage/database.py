@@ -94,6 +94,13 @@ async def init_database() -> None:
         )
     """)
     
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS oauth_states (
+            state TEXT PRIMARY KEY,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
     await db.commit()
     logger.info("Database schema initialized")
 
@@ -302,3 +309,34 @@ async def save_setting(key: str, value: Any) -> None:
     """, (key, json.dumps(value)))
     
     await db.commit()
+
+
+async def save_oauth_state(state: str) -> None:
+    db = await get_db()
+    await db.execute(
+        "INSERT INTO oauth_states (state) VALUES (?)",
+        (state,)
+    )
+    await db.commit()
+
+
+async def get_and_delete_oauth_state(state: str) -> bool:
+    db = await get_db()
+    
+    # Check if exists and is valid (e.g. < 10 mins old)
+    cursor = await db.execute(
+        """
+        SELECT state FROM oauth_states 
+        WHERE state = ? AND created_at > datetime('now', '-10 minutes')
+        """,
+        (state,)
+    )
+    row = await cursor.fetchone()
+    
+    if not row:
+        return False
+        
+    await db.execute("DELETE FROM oauth_states WHERE state = ?", (state,))
+    await db.commit()
+    return True
+

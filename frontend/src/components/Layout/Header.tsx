@@ -5,11 +5,12 @@ import './Header.css'
 
 interface HeaderProps {
     onSettingsClick?: () => void
+    onRefresh?: () => void
 }
 
-export default function Header({ onSettingsClick }: HeaderProps) {
+export default function Header({ onSettingsClick, onRefresh }: HeaderProps) {
     const location = useLocation()
-    const { accounts, logout } = useAuth()
+    const { accounts } = useAuth()
 
     const getTitle = () => {
         const path = location.pathname
@@ -21,12 +22,26 @@ export default function Header({ onSettingsClick }: HeaderProps) {
         return 'QuMail'
     }
 
+    const handleRefresh = () => {
+        if (onRefresh) {
+            onRefresh()
+        } else {
+            window.location.reload()
+        }
+    }
+
+    const handleLogout = () => {
+        localStorage.removeItem('qumail_token')
+        localStorage.setItem('qumail_logged_out', 'true')
+        window.location.reload()
+    }
+
     return (
         <header className="header">
             <h1 className="header-title">{getTitle()}</h1>
 
             <div className="header-actions">
-                <button className="header-button" title="Refresh">
+                <button className="header-button" title="Refresh" onClick={handleRefresh}>
                     <RefreshCw size={18} />
                 </button>
                 <button className="header-button" title="Settings" onClick={onSettingsClick}>
@@ -35,7 +50,7 @@ export default function Header({ onSettingsClick }: HeaderProps) {
 
                 <div className="header-user">
                     <span className="user-email">{accounts[0]?.email || 'Not connected'}</span>
-                    <button className="header-button" onClick={logout} title="Logout">
+                    <button className="header-button" onClick={handleLogout} title="Logout">
                         <LogOut size={18} />
                     </button>
                 </div>

@@ -210,3 +210,127 @@ async def register_recipient(
     )
     
     return {"success": True, "email": email}
+
+
+# ─── E2E Encryption Proof Endpoints ───
+
+
+class VerifyEncryptionRequest(BaseModel):
+    plaintext: str
+    security_level: int = 2
+
+
+class VerifyEncryptionResponse(BaseModel):
+    plaintext_hash: str
+    ciphertext_sample: str
+    decrypted_hash: str
+    hashes_match: bool
+    ciphertext_differs_from_plaintext: bool
+    integrity_verified: bool
+    security_level_used: int
+    proof_summary: str
+
+
+@router.post("/verify-encryption", response_model=VerifyEncryptionResponse)
+async def verify_encryption(token: TokenDep, request: VerifyEncryptionRequest):
+    """
+    E2E encryption proof endpoint.
+    
+    Accepts plaintext, encrypts it, then decrypts the result.
+    Returns proof that:
+      1. Ciphertext differs from plaintext
+      2. original_hash == decrypted_hash
+      3. Integrity verification passes
+    """
+    from crypto_engine import encrypt_email, decrypt_email
+    from crypto_engine.integrity import compute_hash
+
+    plaintext = request.plaintext
+    security_level = request.security_level
+
+    if security_level not in (1, 2, 3):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="security_level must be 1, 2, or 3 for encryption proof",
+        )
+
+    # 1. Compute plaintext hash
+    plaintext_hash = compute_hash(plaintext.encode("utf-8"))
+
+    # 2. Encrypt
+    try:
+        encrypted_result = await encrypt_email(
+            body=plaintext,
+            security_level=security_level,
+            recipients=["proof-test@qumail.local"],
+        )
+    except Exception as e:
+        logger.exception("Encryption failed during proof: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Encryption failed: {e}",
+        )
+
+    ciphertext = encrypted_result["ciphertext"]
+    ciphertext_sample = ciphertext[:80] + "..." if len(ciphertext) > 80 else ciphertext
+
+    # 3. Verify ciphertext differs from plaintext
+    ciphertext_differs = ciphertext != plaintext
+
+    # 4. Decrypt
+    try:
+        email_obj = {
+            "encrypted_body": ciphertext,
+            "security_level": security_level,
+            "key_id": encrypted_result["key_id"],
+            "encryption_metadata": encrypted_result.get("metadata", {}),
+        }
+        decrypted_result = await decrypt_email(email_obj)
+    except Exception as e:
+        logger.exception("Decryption failed during proof: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Decryption failed: {e}",
+        )
+
+    decrypted_hash = decrypted_result.get("decrypted_hash", "")
+    integrity_verified = decrypted_result.get("integrity_verified", False)
+    hashes_match = plaintext_hash == decrypted_hash
+
+    proof_parts = []
+    if ciphertext_differs:
+        proof_parts.append("✅ Ciphertext differs from plaintext")
+    else:
+        proof_parts.append("❌ Ciphertext matches plaintext (FAILURE)")
+
+    if hashes_match:
+        proof_parts.append("✅ SHA-256 hashes match (original == decrypted)")
+    else:
+        proof_parts.append("❌ SHA-256 hashes do not match (FAILURE)")
+
+    if integrity_verified:
+        proof_parts.append("✅ Integrity envelope verified")
+    else:
+        proof_parts.append("❌ Integrity verification failed (FAILURE)")
+
+    return VerifyEncryptionResponse(
+        plaintext_hash=plaintext_hash,
+        ciphertext_sample=ciphertext_sample,
+        decrypted_hash=decrypted_hash,
+        hashes_match=hashes_match,
+        ciphertext_differs_from_plaintext=ciphertext_differs,
+        integrity_verified=integrity_verified,
+        security_level_used=security_level,
+        proof_summary=" | ".join(proof_parts),
+    )
+
+
+@router.get("/audit-log")
+async def get_audit_log(token: TokenDep, count: int = 50):
+    """Return recent encryption boundary audit events."""
+    from utils.audit_logger import audit_log
+
+    return {
+        "events": audit_log.get_recent_events(count),
+        "stats": audit_log.get_stats(),
+    }

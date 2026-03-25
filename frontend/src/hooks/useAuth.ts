@@ -20,6 +20,17 @@ export function useAuth() {
     })
 
     const checkAuth = useCallback(async () => {
+        // If user explicitly logged out, don't auto-authenticate
+        if (localStorage.getItem('qumail_logged_out') === 'true') {
+            setState({
+                isAuthenticated: false,
+                isLoading: false,
+                accounts: [],
+                error: null,
+            })
+            return
+        }
+
         try {
             let token = localStorage.getItem('qumail_token')
 
@@ -63,6 +74,7 @@ export function useAuth() {
     }, [])
 
     const login = useCallback(async (provider: 'gmail' | 'yahoo' = 'gmail') => {
+        localStorage.removeItem('qumail_logged_out')
         try {
             const endpoint = provider === 'yahoo'
                 ? '/api/v1/auth/oauth/yahoo/init'

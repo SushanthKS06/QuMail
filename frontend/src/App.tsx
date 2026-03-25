@@ -5,6 +5,7 @@ import Layout from './components/Layout/Layout'
 import EmailList from './components/Email/EmailList'
 import EmailView from './components/Email/EmailView'
 import ComposeEmail from './components/Email/ComposeEmail'
+import ChatLayout from './components/Chat/ChatLayout'
 import LoginScreen from './components/Auth/LoginScreen'
 import { useAuth } from './hooks/useAuth'
 
@@ -12,6 +13,17 @@ function App() {
     const { isAuthenticated, isLoading, checkAuth } = useAuth()
 
     useEffect(() => {
+        // Handle OAuth callback params
+        const urlParams = new URLSearchParams(window.location.search)
+        const authSuccess = urlParams.get('auth_success')
+        const authError = urlParams.get('auth_error')
+
+        if (authSuccess || authError) {
+            // Clean up URL params after OAuth redirect
+            window.history.replaceState({}, document.title, window.location.pathname)
+        }
+
+        // Always check auth status on app load
         checkAuth()
 
         // Initialize theme from localStorage or default to dark
@@ -46,6 +58,7 @@ function App() {
                             <Route path="/drafts" element={<EmailList folder="DRAFTS" />} />
                             <Route path="/email/:messageId" element={<EmailView />} />
                             <Route path="/compose" element={<ComposeEmail />} />
+                            <Route path="/chat" element={<ChatLayout />} />
                             <Route path="*" element={<Navigate to="/inbox" replace />} />
                         </Route>
                     )}

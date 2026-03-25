@@ -16,11 +16,28 @@ try:
     _OQS_AVAILABLE = True
     logger.info("liboqs-python loaded successfully")
 except ImportError:
-    logger.warning(
-        "liboqs-python not available. PQC operations will use simulation mode. "
-        "Install with: pip install liboqs-python"
+    pass  # We handle the missing library later based on config
+except Exception as e:
+    logger.warning(f"liboqs-python failed to load: {e}")
+    _oqs = None
+    _OQS_AVAILABLE = False
+
+# Check for DEV MODE
+_DEV_MODE = os.environ.get("QUMAIL_DEV_MODE", "0") == "1"
+
+if not _OQS_AVAILABLE and not _DEV_MODE:
+    logger.critical("liboqs-python NOT FOUND. System cannot start in PRODUCTION mode without real PQC.")
+    raise SystemError(
+        "CRITICAL SECURITY FAILURE: liboqs-python is missing. "
+        "The system refuses to fall back to insecure simulation in production. "
+        "Install liboqs-python or set QUMAIL_DEV_MODE=1 for testing."
     )
 
+if not _OQS_AVAILABLE and _DEV_MODE:
+    logger.warning(
+        "liboqs-python not found. RUNNING IN INSECURE DEV MODE with simulated PQC. "
+        "DO NOT USE FOR REAL DATA."
+    )
 
 KYBER_VARIANT = "Kyber768"
 DILITHIUM_VARIANT = "Dilithium3"
@@ -46,6 +63,8 @@ def _cache_cleanup():
 class SimulatedKyber:
     
     def __init__(self):
+        if not _DEV_MODE:
+            raise RuntimeError("Simulated Kyber accessed in non-dev mode!")
         self.public_key = os.urandom(1184)
         self.secret_key = os.urandom(2400)
     
@@ -74,6 +93,8 @@ class SimulatedKyber:
 class SimulatedDilithium:
     
     def __init__(self):
+        if not _DEV_MODE:
+            raise RuntimeError("Simulated Dilithium accessed in non-dev mode!")
         self.public_key = os.urandom(1952)
         self.secret_key = os.urandom(4000)
     
@@ -185,6 +206,6 @@ def get_pqc_info() -> dict:
         "signature_algorithm": DILITHIUM_VARIANT,
         "mode": "native" if _OQS_AVAILABLE else "simulated",
         "warning": None if _OQS_AVAILABLE else (
-            "Using simulated PQC. For production use, install liboqs-python."
+            "Using simulated PQC (DEV MODE). UNSECURE."
         ),
     }

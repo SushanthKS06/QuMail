@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: qumail-backend-prod
+    restart: always
+    ports:
+      - "127.0.0.1:8000:8000" # Bind to localhost only
+    volumes:
+      - qumail-data:/app/data
+    environment:
+      - DB_PATH=/app/data/qumail.db
+      - KM_URL=http://key_manager:8001
+      - FRONTEND_URL=http://localhost:5173
+      - QUMAIL_DEV_MODE=0
+      # SMTP Settings must be injected via .env in production
+    networks:
+      - qumail-net
+    user: qumail
+
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: qumail-frontend-prod
+    restart: always
+    ports:
+      - "5173:80"
+    networks:
+      - qumail-net
+
+  key_manager:
+    build:
+      context: ./key_manager
+      dockerfile: Dockerfile
+    container_name: qumail-km-prod
+    restart: always
+    ports:
+      - "127.0.0.1:8001:8001" # Bind to localhost only
+    volumes:
+      - km-data:/app/data
+    environment:
+      - QUMAIL_DEV_MODE=0
+    networks:
+      - qumail-net
+
+volumes:
+  qumail-data:
+  km-data:
+
+networks:
+  qumail-net:
+    driver: bridge

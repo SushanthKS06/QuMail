@@ -1,0 +1,38 @@
+﻿2026-02-19 17:12:40,145 - main - INFO - ============================================================
+2026-02-19 17:12:40,145 - main - INFO - QuMail Key Manager v2.0.0 (Production-Ready)
+2026-02-19 17:12:40,145 - main - INFO - ============================================================
+2026-02-19 17:12:40,145 - main - INFO - Persistence: ENABLED (data/keystore.enc)
+2026-02-19 17:12:40,145 - main - INFO - Audit Logging: ENABLED (data/audit.log)
+2026-02-19 17:12:40,146 - main - INFO - Rate Limiting: 100 requests/minute
+2026-02-19 17:12:40,146 - main - INFO - Binding to 127.0.0.1:8100
+2026-02-19 17:12:40,523 - core.persistent_store - ERROR - Failed to load persistent store: 
+2026-02-19 17:12:40,687 - core.key_pool - INFO - Generating 10485760 bytes of classical PRNG key material...
+2026-02-19 17:12:41,114 - core.key_pool - INFO - Key pool initialized (classical PRNG entropy source)
+2026-02-19 17:12:41,114 - main - INFO - Key pool status:
+2026-02-19 17:12:41,114 - main - INFO -   - OTP available: 10485760 bytes
+2026-02-19 17:12:41,114 - main - INFO -   - AES keys available: 1000
+2026-02-19 17:12:41,115 - main - INFO -   - Quantum entropy: NO
+2026-02-19 17:12:41,270 - main - INFO - Key Manager ready to accept connections
+2026-02-19 17:18:20,810 - main - INFO - Shutting down Key Manager...
+2026-02-19 17:18:22,062 - core.key_pool - INFO - Key pool shutdown complete - all keys zeroized
+2026-02-19 17:18:22,063 - main - INFO - Key Manager shutdown complete
+2026-02-19 17:18:22,064 - __main__ - INFO - Received signal 15, initiating shutdown...
+2026-02-19 17:18:45,599 - main - INFO - ============================================================
+2026-02-19 17:18:45,599 - main - INFO - QuMail Key Manager v2.0.0 (Production-Ready)
+2026-02-19 17:18:45,599 - main - INFO - ============================================================
+2026-02-19 17:18:45,599 - main - INFO - Persistence: ENABLED (data/keystore.enc)
+2026-02-19 17:18:45,599 - main - INFO - Audit Logging: ENABLED (data/audit.log)
+2026-02-19 17:18:45,600 - main - INFO - Rate Limiting: 100 requests/minute
+2026-02-19 17:18:45,600 - main - INFO - Binding to 127.0.0.1:8100
+2026-02-19 17:18:45,978 - core.persistent_store - ERROR - Failed to load persistent store: 
+2026-02-19 17:18:46,142 - core.key_pool - INFO - Generating 10485760 bytes of classical PRNG key material...
+2026-02-19 17:18:46,621 - core.key_pool - INFO - Key pool initialized (classical PRNG entropy source)
+2026-02-19 17:18:46,622 - main - INFO - Key pool status:
+2026-02-19 17:18:46,622 - main - INFO -   - OTP available: 10485760 bytes
+2026-02-19 17:18:46,622 - main - INFO -   - AES keys available: 1000
+2026-02-19 17:18:46,622 - main - INFO -   - Quantum entropy: NO
+2026-02-19 17:18:46,755 - main - INFO - Key Manager ready to accept connections
+2026-02-19 17:23:52,074 - main - INFO - Shutting down Key Manager...
+2026-02-19 17:23:53,752 - core.key_pool - INFO - Key pool shutdown complete - all keys zeroized
+2026-02-19 17:23:53,753 - main - INFO - Key Manager shutdown complete
+2026-02-19 17:23:53,756 - __main__ - INFO - Received signal 15, initiating shutdown...

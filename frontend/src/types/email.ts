@@ -13,6 +13,8 @@ export interface Email {
     has_attachments: boolean
     is_read: boolean
     attachments?: Attachment[]
+    ai_security_score?: number
+    ai_security_reasons?: string[]
 }
 
 export interface Attachment {

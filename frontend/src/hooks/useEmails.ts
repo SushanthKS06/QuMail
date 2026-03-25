@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { fetchEmails, type EmailListResponse } from '../api/emails'
+import { fetchEmails } from '../api/emails'
 import type { Email } from '../types/email'
 
 interface EmailsState {
